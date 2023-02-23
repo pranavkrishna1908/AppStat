@@ -1,0 +1,128 @@
+---
+title: "Rough-work"
+output: html_document
+date: "2023-02-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+## R Markdown
+The data we have is from a PhD student at an EPFL lab regarding snow-flake diameters. The data is binned with non-uniform bin-length. We remove the bins with zero entries and look at the data. We see a bi-modal distribution on making a histogram of the data. 
+
+We know that the data is supposed to be a mixture of two log-normal distributions which is not contrary to the expert knowedge as the data is bimodal.
+
+```{r snowdata}
+#snowdata <- read.csv("E:/EPFL/AppStat/AppStat-359822/Project-Snowflakes/1_snow_particles.csv")
+str(snowdata)
+which(snowdata$retained....==0)
+snowdata = snowdata[1:45,]
+summary(snowdata)
+plot1 = ggplot()+
+    geom_segment(aes(x = snowdata$startpoint, xend = snowdata$endpoint, y = snowdata$retained...., yend = snowdata$retained....))+ 
+    xlab('Diameter of Snowflake')+
+    ylab('Percentage of Observations')
+plot1
+```
+
+```{r}
+#jitter and em
+#jittered data set construction
+snowdata2 = snowdata
+snowdata2$middle = (snowdata$startpoint+snowdata$endpoint)/2
+jittereddataset = rep(0, 1)
+counter = 1
+increment = 0
+for(i in 1:nrow(snowdata2)){
+  increment = as.integer(snowdata2$retained....[i]*snowdata2$particles.detected[i]/100)
+  jittereddataset[counter:(counter+increment)] = snowdata2$middle[i] +  runif(increment, min = snowdata2$startpoint[i], max = snowdata2$endpoint[i])
+  counter = counter + increment
+}
+#define the density for a mixture of log normal
+dmixlnorm <- function(x, mu1, mu2, sigma1, sigma2, tau){
+  y <- (1-tau)*dlnorm(x,mu1,sigma1) + tau*dlnorm(x,mu2,sigma2)
+  return(y)
+}
+#define the likelihood function
+likelihood <- function(x, mu1, mu2, sigma1, sigma2, tau){
+  temp = 0
+  for (i in 1:length(x)) {
+    temp = temp + log(dmixlnorm(x[i], mu1,mu2,sigma1, sigma2, tau))
+  }
+  return(temp)
+}
+
+sample = jittereddataset
+N = length(sample)
+mu1 = 0
+mu2 = 1
+sigma1_sq = 1
+sigma2_sq = 4
+tau = 0.5
+likelihood_obs = likelihood(sample,  mu1, mu2, sigma1_sq, sigma2_sq, tau)
+p = rep(0, N)
+piece1 = dlnorm(sample ,mean = mu2, sd = sqrt(sigma2_sq))*tau
+piece2 = dmixlnorm(sample, mu1, mu2, sqrt(sigma1_sq), sqrt(sigma2_sq), tau)
+p = piece1/piece2
+next_tau = sum(p)/N
+next_mu1 = (sum((1-p)*log(sample)))/(N - sum(p))
+next_mu2 = sum(p*log(sample))/sum(p)
+next_sigma1_sq = sum((1-p)*((log(sample) - next_mu1)**2))/(N - sum(p))
+next_sigma2_sq = sum(p*(log(sample) - next_mu2)**2)/sum(p)
+likelihood_obs_next = likelihood(sample, next_mu1,next_mu2,sqrt(next_sigma1_sq),sqrt(next_sigma2_sq),next_tau)
+print(likelihood_obs_next)
+tau = next_tau
+mu1 = next_mu1
+mu2 = next_mu2
+sigma1_sq = next_sigma1_sq
+sigma2_sq = next_sigma2_sq
+iter = 1
+tol = 0.0001
+while (abs(likelihood_obs_next - likelihood_obs) > tol) {
+  print(11)
+  piece1 = dlnorm(sample ,mean = mu2, sd = sqrt(sigma2_sq))*tau
+  piece2 = dmixlnorm(sample, mu1, mu2, sqrt(sigma1_sq), sqrt(sigma2_sq), tau)
+  p = piece1/piece2
+  next_tau = sum(p)/N
+  next_mu1 = (sum((1-p)*log(sample)))/(N - sum(p))
+  next_mu2 = sum(p*log(sample))/sum(p)
+  next_sigma1_sq = sum((1-p)*((log(sample) - next_mu1)**2))/(N - sum(p))
+  next_sigma2_sq = sum(p*(log(sample) - next_mu2)**2)/sum(p)
+  likelihood_obs = likelihood_obs_next
+  likelihood_obs_next = likelihood(sample, next_mu1,next_mu2,sqrt(next_sigma1_sq),sqrt(next_sigma2_sq),next_tau)
+  tau = next_tau
+  mu1 = next_mu1
+  mu2 = next_mu2
+  sigma1_sq = next_sigma1_sq
+  sigma2_sq = next_sigma2_sq
+  iter = iter + 1
+}
+params = c(next_mu1,next_mu2,sqrt(next_sigma1_sq),sqrt(next_sigma2_sq),next_tau)
+print(params)
+print(iter)
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
