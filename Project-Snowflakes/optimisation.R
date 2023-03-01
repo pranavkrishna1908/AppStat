@@ -14,4 +14,5 @@ reallikelihood = function( params,x = snowdata3){
   }
   return(temp)
 }
-optim(par = params, reallikelihood)
+final = optim(par = params, reallikelihood)
+final$par

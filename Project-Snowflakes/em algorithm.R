@@ -9,11 +9,11 @@ likelihood <- function(x, mu1, mu2, sigma1, sigma2, tau){
   }
   return(temp)
 }
-num = 200
-temp1 = rlnorm(200,1,4)
-tau = runif(200)
+num = 2000
+temp1 = rlnorm(num,1,4)
+tau = runif(num)
 tau = tau<0.5
-sample = rlnorm(200)*tau + temp1 *(1-tau)
+sample = rlnorm(num)*tau + temp1 *(1-tau)
 mu1 = 0
 mu2 = 1
 sigma1_sq = 1
