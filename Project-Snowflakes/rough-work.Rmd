@@ -10,42 +10,42 @@ library(ggplot2)
 ```
 
 ## R Markdown
-The data we have is from a PhD student at an EPFL lab regarding snow-flake diameters. The data is binned with non-uniform bin-length. We remove the bins with zero entries and look at the data. We see a bi-modal distribution on making a histogram of the data. 
 
-We know that the data is supposed to be a mixture of two log-normal distributions which is not contrary to the expert knowedge as the data is bimodal.
+The data we have is from a PhD student at an EPFL lab regarding snow-flake diameters. The data is binned with non-uniform bin-length. We remove the bins with zero entries and look at the data. We see a bi-modal distribution on making a histogram of the data.
+
+We know that the data is supposed to be a mixture of two log-normal distributions which is not contrary to the expert knowledge as the data is bi modal.
 
 ```{r snowdata}
-#snowdata <- read.csv("E:/EPFL/AppStat/AppStat-359822/Project-Snowflakes/1_snow_particles.csv")
+snowdata <- read.csv("E:/EPFL/AppStat/AppStat-359822/Project-Snowflakes/1_snow_particles.csv")
+set.seed(0)
 str(snowdata)
-which(snowdata$retained....==0)
-snowdata = snowdata[1:45,]
+#which(snowdata$retained....==0)# might need to remove this
+#snowdata = snowdata[1:45,]
 summary(snowdata)
 plot1 = ggplot()+
-    geom_segment(aes(x = snowdata$startpoint, xend = snowdata$endpoint, y = snowdata$retained...., yend = snowdata$retained....))+ 
+    geom_segment(aes(x = snowdata$startpoint, xend = snowdata$endpoint, y = snowdata$retained..../100, yend = snowdata$retained..../100))+ 
     xlab('Diameter of Snowflake')+
-    ylab('Percentage of Observations')
+    ylab('not Percentage of Observations')
 plot1
 ```
 
 ```{r}
 #jitter and em
 #jittered data set construction
-snowdata2 = snowdata
-snowdata2$middle = (snowdata$startpoint+snowdata$endpoint)/2
-jittereddataset = rep(0, 1)
-counter = 1
-increment = 0
-for(i in 1:nrow(snowdata2)){
-  increment = as.integer(snowdata2$retained....[i]*snowdata2$particles.detected[i]/100)
-  jittereddataset[counter:(counter+increment)] = snowdata2$middle[i] +  runif(increment, min = snowdata2$startpoint[i], max = snowdata2$endpoint[i])
-  counter = counter + increment
-}
-#define the density for a mixture of log normal
 dmixlnorm <- function(x, mu1, mu2, sigma1, sigma2, tau){
   y <- (1-tau)*dlnorm(x,mu1,sigma1) + tau*dlnorm(x,mu2,sigma2)
   return(y)
 }
-#define the likelihood function
+pmixlnorm <- function(x, mu1, mu2, sigma1, sigma2, tau){
+  y <- (1-tau)*plnorm(x,mu1,sigma1) + tau*plnorm(x,mu2,sigma2)
+  return(y)
+}
+rmixlnorm <- function(n, mu1, mu2, sigma1, sigma2, tau){
+  unifs = runif(n)
+  indicators = unifs<0.5
+  answer = indicators*rlnorm(n, mu1, sigma1) + (1 - indicators)*rlnorm(n, mu2, sigma2)
+  return(answer)
+}
 likelihood <- function(x, mu1, mu2, sigma1, sigma2, tau){
   temp = 0
   for (i in 1:length(x)) {
@@ -53,14 +53,40 @@ likelihood <- function(x, mu1, mu2, sigma1, sigma2, tau){
   }
   return(temp)
 }
-
-sample = jittereddataset
+reallikelihood = function( params){
+  mu1 = params[1]
+  mu2 = params[2]
+  sigma1 = exp(params[3])
+  sigma2 = exp(params[4])
+  tau = 1/(1 + exp(params[5]))
+  temp = 0
+  snowdata3 = snowdata
+  snowdata3$number = as.integer(snowdata3$retained....*snowdata3$particles.detected/100)
+  for(i in 1:nrow(snowdata3)){
+    temp = temp +snowdata3[i,6] * log(pmixlnorm(snowdata3[i,3],mu1, mu2, sigma1, sigma2, tau) - pmixlnorm(snowdata3[i,2], mu1, mu2, sigma1, sigma2, tau))
+  }
+  return(-temp)
+}
+jitter_function= function(snowdata2 = snowdata){
+jittereddataset = rep(0, 1)
+counter = 1
+increment = 0
+num_loop = which(snowdata2$retained.... == 0)[1] - 1
+for(i in 1:num_loop){
+  increment = as.integer(snowdata2$retained....[i]*snowdata2$particles.detected[i]/100)
+  jittereddataset[counter:(counter+increment)] =   runif(increment, min = snowdata2$startpoint[i], max = snowdata2$endpoint[i])
+  counter = counter + increment
+}
+return(jittereddataset)
+}
+em_function = function(snowdata2 = snowdata){
+sample = jitter_function(snowdata2)
 N = length(sample)
-mu1 = 0
-mu2 = 1
+mu1 = -2
+mu2 = -0.6
 sigma1_sq = 1
 sigma2_sq = 4
-tau = 0.5
+tau = 0.8
 likelihood_obs = likelihood(sample,  mu1, mu2, sigma1_sq, sigma2_sq, tau)
 p = rep(0, N)
 piece1 = dlnorm(sample ,mean = mu2, sd = sqrt(sigma2_sq))*tau
@@ -79,9 +105,11 @@ mu2 = next_mu2
 sigma1_sq = next_sigma1_sq
 sigma2_sq = next_sigma2_sq
 iter = 1
-tol = 0.0001
+tol = 1
 while (abs(likelihood_obs_next - likelihood_obs) > tol) {
-  print(11)
+  print(iter)
+  print(likelihood_obs_next)
+
   piece1 = dlnorm(sample ,mean = mu2, sd = sqrt(sigma2_sq))*tau
   piece2 = dmixlnorm(sample, mu1, mu2, sqrt(sigma1_sq), sqrt(sigma2_sq), tau)
   p = piece1/piece2
@@ -102,27 +130,95 @@ while (abs(likelihood_obs_next - likelihood_obs) > tol) {
 params = c(next_mu1,next_mu2,sqrt(next_sigma1_sq),sqrt(next_sigma2_sq),next_tau)
 print(params)
 print(iter)
+return(params)
+}
+opt_function= function(snowdata3 = snowdata){
+#now, we have unconstrained optimisation. Thus, we transform the paramters so that they are on the real line.
+#no change from mu1 and mu2
+log_sigma_1 = log(sqrt(sigma1_sq))
+log_sigma_2 = log(sqrt(sigma2_sq))
+trans_tau = log(1/tau - 1)
+trans_params =  c(mu1,mu2,log_sigma_1,log_sigma_2,trans_tau)
 
-
-
-
-
-
+final = optim(par = trans_params, reallikelihood)
+params_final = final$par
+params_final[3:4] = exp(params_final[3:4])
+params_final[5] = 1/(1 + exp(params_final[5]))
+return(params_final)
+}
+params = em_function()
+mu1 = params[1];mu2 = params[2];sigma1_sq   = params[3];sigma2_sq = params[4]
+tau =params[5]
+params_final = opt_function()
+temp = seq(0,2,0.001)
+hist(jitter_function(), breaks = c(snowdata$endpoint, 0))
+points(temp,dmixlnorm(temp, params_final[1],params_final[2],params_final[3], params_final[4], 1 - params_final[5]))
 ```
-
-
-
-
-
-
-
 
 ## Including Plots
 
-You can also embed plots, for example:
+```{r pressure}
+boot_opt_function= function(snowdata3 = temp_snowdata){
+#now, we have unconstrained optimisation. Thus, we transform the paramters so that they are on the real line.
+#no change from mu1 and mu2
+log_sigma_1 = log(sqrt(temp_sigma1_sq))
+log_sigma_2 = log(sqrt(temp_sigma2_sq))
+trans_tau = log(1/temp_tau - 1)
+trans_params =  c(temp_mu1,temp_mu2,log_sigma_1,log_sigma_2,trans_tau)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+final = optim(par = trans_params, reallikelihood)
+params_final = final$par
+params_final[3:4] = exp(params_final[3:4])
+params_final[5] = 1/(1 + exp(params_final[5]))
+return(params_final)
+}
+
+bootstrap_n = 200000
+#params_final is the truth in the botstrap world
+#now, we do EM and optim on this
+B = 500
+test_stat = rep(0, B)
+for(i in 1:B){
+bootstrap_samples = rmixlnorm(bootstrap_n, params_final[1],params_final[2],params_final[3], params_final[4], 1 - params_final[5])
+
+a = hist(bootstrap_samples, breaks = c(snowdata$endpoint, 0))
+temp_snowdata = snowdata
+temp_snowdata$particles.detected = bootstrap_n
+temp_snowdata$retained....= 100*a$counts/bootstrap_n
+reallikelihood = function( params){
+  mu1 = params[1]
+  mu2 = params[2]
+  sigma1 = exp(params[3])
+  sigma2 = exp(params[4])
+  tau = 1/(1 + exp(params[5]))
+  temp = 0
+  snowdata3 = temp_snowdata
+  snowdata3$number = as.integer(snowdata3$retained....*snowdata3$particles.detected/100)
+  for(i in 1:nrow(snowdata3)){
+    temp = temp +snowdata3[i,6] * log(pmixlnorm(snowdata3[i,3],mu1, mu2, sigma1, sigma2, tau) - pmixlnorm(snowdata3[i,2], mu1, mu2, sigma1, sigma2, tau))
+  }
+  return(-temp)
+}
+temp = em_function(temp_snowdata)
+temp_mu1 = temp[1]
+temp_mu2 = temp[2]
+temp_sigma1_sq = temp[3]
+temp_sigma2_sq = temp[4]
+temp_tau = temp[5]
+temp = boot_opt_function()
+ksteststat = function(x){
+  return(abs(pmixlnorm(x, params_final[1], params_final[2], params_final[3], params_final[4], 1 - params_final[5]) - pmixlnorm(x, temp[1], temp[2], temp[3], temp[4], 1 - temp[5])))
+}
+optim(par = 0.3, ksteststat)
+
+
+test_stat[i] =   ksteststat(temp)
+
+
+
+}
+
+
+
+
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
