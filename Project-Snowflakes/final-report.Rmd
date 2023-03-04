@@ -51,13 +51,15 @@ hist_plot
 
 From expert knowledge, we know that the data is supposed to be a mixture of two log-normal distributions. This is  not contrary to the data as it is bi modal. Furthermore, we see that the data is non-negative. Thus, a mixture of two log-normal dansities can be a good model for the data.
 
-We intend to fit a mixture of two lognormal distributions to this data. First we add randomness to the data by simulating the required number of points uniformly at random in each interval. Now, we use the EM algorithm to fit the points to this selection of points to get s set of paramters. For this algorithm, we pretend as if this selection of points was indeed the sample and use the corresponding density which is $$f(x) = 
+We intend to fit a mixture of two log normal distributions to this data. We recognise that the data is binned and we do not have access to the samples that generated this data. First we add randomness to the data by simulating the required number of points uniformly at random in each interval. We choose to do this uniformly and not from the normal distribution as using the normal distribution can lead to sample values possibly outside the corresponding interval. Thus, using the uniform distribution is more appropriate.
+
+Now, we use the EM algorithm to fit the points to this selection of points to get s set of parameters. For this algorithm, we pretend as if this selection of points was indeed the sample and use the corresponding density which is $$f(x) = 
 (1-\tau) \varphi_{\mu_1,\sigma_1^2}(x) + \tau \varphi_{\mu_2,\sigma_2^2}(x) =
 (1-\tau) \frac{1}{x \sqrt{2 \pi \sigma_1^2}} \exp\left( - \frac{1}{2} \left[ \frac{ln(x)-\mu_1}{\sigma_1} \right]^2 \right) + 
-\tau \frac{1}{x \sqrt{2 \pi \sigma_2^2}} \exp\left( - \frac{1}{2} \left[ \frac{ln(x)-\mu_2}{\sigma_2} \right]^2 \right)$$.
+\tau \frac{1}{x \sqrt{2 \pi \sigma_2^2}} \exp\left( - \frac{1}{2} \left[ \frac{ln(x)-\mu_2}{\sigma_2} \right]^2 \right).$$
 
 Now, recognising that we had introduced randomness in the problem, we use the native optimisation function in R to optimise the true likelihood of the data. It is -
-$$\mathbb{L}(\mathcal{y}) = \Pi_{j=1}^{N} \Pi_{i=1}^{52} ( \int_{x_{i}}^{x_{upper}} f(t) dt) ^{\mathbf{1}\{ y_j \in (x_i, x_{i+1}) \}}  $$. 
+$$\mathbb{L}(\mathcal{\vec{y}}) = \Pi_{j=1}^{N} \Pi_{i=1}^{52} \Big( \int_{x_{i}}^{x_{i+1}} f(t) dt\Big) ^{\mathbf{1}\{ y_j \in (x_i, x_{i+1}) \}}.$$
 
 To avoid the optimisation going out of bounds, take the log of the variances and the inverse of the sigmoid of $\tau$ to make sure that the domain of optimisation is the entire $\mathbf{R}^5$ space and avoid and problems in optimisation.
 
@@ -84,6 +86,29 @@ ggplot()+
 We see that the curve corresponding to the final parameters is very close to the histogram and overall, one can say that the fit of the curve looks plausible.
 
 Lastly, we do a goodness of fit test to the data using a parametric bootstrap to asses the plausibility that the distribution of snowflake diameters is adequately modeled by this mixture model.
+
+First, we observe that the Null hypothesis is composite and thus, the KS statistic is not appropriate for this Hypothesis Test. Thus, we fall back on the parametric bootstrap to asses the plausibility of the hypothesis that the distribution of snowflake diameters is a mixture of two log normal densities. The procedure is as follows - 
+
+Set
+$$
+T = \sup_x \Big| \widehat{F}_N(x) - F_\widehat{\lambda}(x) \Big|,
+$$
+where $\widehat{\lambda}$ is a specific estimator consistent under $H_0$.
+
+
+Now, we undertake the bootstrap -
+
+* **for** $b=1,\ldots,B$ 
+  - generate resample $\mathcal{X}_b^\star = \{ X_{b,1}^\star,\ldots,X_{b,N}^\star \}$ from density corresponding to $\widehat{\lambda}$
+  - estimate $\widehat{\lambda}_b^\star$ from the resample $\mathcal{X}_b^\star$ after binning it using the same breakpoints as in the original data
+  - calculate the EDF $\widehat{F}_\widehat{\lambda}_b^\star$ from the resample $\mathcal{X}_b^\star$
+  - set $T_b^\star = \sup_x \Big| \widehat{F}_\widehat{\lambda}_b^\star - F_{\widehat{\lambda}_b^\star}(x) \Big|$
+* estimate the p-value of the test by
+\[
+\widehat{\text{p-val}} = \frac{1}{B+1}\left( 1 + \sum_{b=1}^B \mathbb{I}_{[T_b^\star \geq T]} \right)
+\]
+
+
 
 
 

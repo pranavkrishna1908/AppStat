@@ -1,0 +1,105 @@
+---
+title: "Final Report on Snowflakes Data"
+output: html_document
+date: "2023-03-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE) 
+```
+The data we have is from a PhD student at an EPFL lab regarding snow-flake diameters. The data is binned with non-uniform bin-length. An extract of the data looks as follows - 
+
+
+```{r, echo = FALSE}
+snowdata <- read.csv("../Project-Snowflakes/1_snow_particles.csv")
+head(snowdata)
+```
+
+
+We see a bi-modal distribution on making a histogram of the data.
+
+
+```{r cars, include=FALSE, warnings=FALSE}
+library(ggplot2)
+
+#the hstogram for the binned data will not change even if we introduce the randomness as long as we use the same breakpoints. Thus, we do a histogram of this jittered data which is identical to the histogram we want.
+jitter_function= function(snowdata2 = snowdata){
+jittereddataset = rep(0, 1)
+counter = 1
+increment = 0
+num_loop = which(snowdata2$retained.... == 0)[1] - 1
+for(i in 1:num_loop){
+  increment = as.integer(snowdata2$retained....[i]*snowdata2$particles.detected[i]/100)
+  jittereddataset[counter:(counter+increment)] =   runif(increment, min = snowdata2$startpoint[i], max = snowdata2$endpoint[i])
+  counter = counter + increment
+}
+return(jittereddataset)
+}
+hist_plot = ggplot()+
+ geom_histogram(mapping = aes(x = jitter_function(), y = ..density..), breaks = c(snowdata$endpoint[1:47], 0))+
+  xlab('Snowflake Diameters')+
+  ylab('Density') 
+```
+
+
+
+
+
+```{r pressure, echo=FALSE,  fig.align="center", fig.cap="Figure 1: Histogram for the snowflake diameters"}
+hist_plot
+```
+
+From expert knowledge, we know that the data is supposed to be a mixture of two log-normal distributions. This is  not contrary to the data as it is bi modal. Furthermore, we see that the data is non-negative. Thus, a mixture of two log-normal dansities can be a good model for the data.
+
+We intend to fit a mixture of two log normal distributions to this data. We recognise that the data is binned and we do not have access to the samples that generated this data. First we add randomness to the data by simulating the required number of points uniformly at random in each interval. We choose to do this uniformly and not from the normal distribution as using the normal distribution can lead to sample values possibly outside the corresponding interval. Thus, using the uniform distribution is more appropriate.
+
+Now, we use the EM algorithm to fit the points to this selection of points to get s set of parameters. For this algorithm, we pretend as if this selection of points was indeed the sample and use the corresponding density which is $$f(x) = 
+(1-\tau) \varphi_{\mu_1,\sigma_1^2}(x) + \tau \varphi_{\mu_2,\sigma_2^2}(x) =
+(1-\tau) \frac{1}{x \sqrt{2 \pi \sigma_1^2}} \exp\left( - \frac{1}{2} \left[ \frac{ln(x)-\mu_1}{\sigma_1} \right]^2 \right) + 
+\tau \frac{1}{x \sqrt{2 \pi \sigma_2^2}} \exp\left( - \frac{1}{2} \left[ \frac{ln(x)-\mu_2}{\sigma_2} \right]^2 \right).$$
+
+Now, recognising that we had introduced randomness in the problem, we use the native optimisation function in R to optimise the true likelihood of the data. It is -
+$$\mathbb{L}(\mathcal{\vec{y}}) = \Pi_{j=1}^{N} \Pi_{i=1}^{52} \Big( \int_{x_{i}}^{x_{i+1}} f(t) dt\Big) ^{\mathbf{1}\{ y_j \in (x_i, x_{i+1}) \}}.$$
+
+To avoid the optimisation going out of bounds, take the log of the variances and the inverse of the sigmoid of $\tau$ to make sure that the domain of optimisation is the entire $\mathbf{R}^5$ space . This gives us the final parameter values as $(\mu_1 , \mu2 , \sigma1 , \sigma2,\tau) = (-2.01, -0.455, 0.61, 0.30, 0.65)$. We see that this fits the data very well as shown by overlaying the corresponding density over the histogram. 
+
+```{r none, echo=FALSE,  fig.align="center", fig.cap="Figure 2: Histogram for the snowflake diameters overlaid with the best fit estiamte of the density"}
+load("../Project-Snowflakes/final.RData")
+dmixlnorm <- function(x, mu1, mu2, sigma1, sigma2, tau){
+  y <- (1-tau)*dlnorm(x,mu1,sigma1) + tau*dlnorm(x,mu2,sigma2)
+  return(y)
+}
+func_plot= function(x){
+  return(dmixlnorm(x, params_final[1],params_final[2],params_final[3], params_final[4], params_final[5]))
+}
+  
+  
+ggplot()+
+  geom_histogram(mapping = aes(x = jitter_function(), y = ..density..), breaks = c(snowdata$endpoint[1:47], 0))+
+  xlim(0,2)+
+  geom_function(fun = func_plot, colour = 'red', size = 1)+
+  xlab('Snowflake Diameters')+
+  ylab('Density') 
+```
+
+
+We see that the curve corresponding to the final parameters is very close to the histogram and overall, one can say that the fit of the curve looks plausible.
+
+Lastly, we do a goodness of fit test to the data using a parametric bootstrap to asses the plausibility that the distribution of snowflake diameters is adequately modeled by this mixture model.
+
+First, we observe that the Null hypothesis is composite and thus, the KS statistic is not appropriate for this Hypothesis Test. Thus, we fall back on the parametric bootstrap to asses the plausibility of the hypothesis that the distribution of snowflake diameters is a mixture of two log normal densities. The procedure is as follows - 
+
+Set $$ T = \sup_x \Big| \widehat{F}_N(x) - F_\widehat{\lambda}(x) \Big|$$ where $\widehat{\lambda}$ is a specific estimator consistent under $H_0$.
+
+Now, we undertake the bootstrap -
+
+* **for** $b=1,\ldots,B$ 
+  - generate resample $\mathcal{X}_b^\star = \{ X_{b,1}^\star,\ldots,X_{b,N}^\star \}$ from density corresponding to $\widehat{\lambda}$
+  - estimate $\widehat{\lambda}_b^\star$ from the resample $\mathcal{X}_b^\star$ after binning it using the same breakpoints as in the original data
+  - calculate the EDF $\widehat{F}_{\widehat{\lambda}_b^\star}$ from the resample $\mathcal{X}_b^\star$
+  - set $T_b^\star = \sup_x \Big| F_\widehat{\lambda}(x) - F_{\widehat{\lambda}_b^\star}(x) \Big|$
+* estimate the p-value of the test by $$ \widehat{\text{p-val}} = \frac{1}{B+1}\left( 1 + \sum_{b=1}^B \mathbb{I}_{[T_b^\star \geq T]} \right)$$.
+
+On running the required computations, we get that the p value is 1. Thus, we see that the assumption that the underlying distribution for the snowflakes is bilognormal is compatible with the observed data.
+
+

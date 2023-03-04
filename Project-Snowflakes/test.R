@@ -108,7 +108,7 @@ for (i in 1:length(data$X)) {
 }
 
 # bootstrap
-n_bootstrap = 500 # number of bootstrap samples
+n_bootstrap = 5 # number of bootstrap samples
 ndata_boot = 500 # number of data in bootstrap sample
 bootstrap_data = matrix(nrow = ndata_boot, ncol = n_bootstrap) 
 for (i in 1:n_bootstrap) {
@@ -160,13 +160,14 @@ for (i in 1:n_bootstrap) {
 #Calculate the kolmogorov smirnoff statisitc
 #create data to use for ecdf for binned data
 
-ecdf_binned = cumsum(snowdata$retained....)/snowdata$particles.detected
+ecdf_binned = cumsum(snowdata$retained....)/100
 kol_smir = 0 
 for (i in 1:nrow(snowdata)) {
   a = abs(ecdf_binned[i] - 
             cdfbilognorm(snowdata$endpoint[i], mu1_opt, mu2_opt, sigma1_opt, sigma2_opt, tau_opt))
   if (a > kol_smir) {
     kol_smir = a
+    print(cdfbilognorm(snowdata$endpoint[i], mu1_opt, mu2_opt, sigma1_opt, sigma2_opt, tau_opt))
   }
 }
 
@@ -186,9 +187,9 @@ for (k in 1:n_bootstrap) {
     counter = counter + binned_bootstrap_data[i, k]
   }
   ecdf_boot = ecdf(ecdf_boot_data)
-  for (j in 1:length(grid)) {
-    a = abs(ecdf_boot(grid[j]) - 
-              cdfbilognorm(grid[j], estim_boot_opt[1, k], estim_boot_opt[2, k], 
+  for (j in 1:length(x_grid)) {
+    a = abs(ecdf_boot(x_grid[j]) - 
+              cdfbilognorm(x_grid[j], estim_boot_opt[1, k], estim_boot_opt[2, k], 
                            estim_boot_opt[3, k], estim_boot_opt[4, k], estim_boot_opt[5, k]))
     if (a > T_b[k]) {
       T_b[k] = a

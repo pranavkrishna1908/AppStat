@@ -90,7 +90,7 @@ em_function = function(snowdata2 = snowdata){
   sigma1_sq = next_sigma1_sq
   sigma2_sq = next_sigma2_sq
   iter = 1
-  tol = 50
+  tol = 100
   while (abs(likelihood_obs_next - likelihood_obs) > tol) {
     piece1 = dlnorm(sample ,mean = mu2, sd = sqrt(sigma2_sq))*tau
     piece2 = dmixlnorm(sample, mu1, mu2, sqrt(sigma1_sq), sqrt(sigma2_sq), tau)
@@ -153,12 +153,12 @@ ggplot()+
 
 
 
-
-ggplot()+
-  geom_histogram(mapping = aes(x = jitter_function(), y = ..density..), breaks = c(snowdata$endpoint[1:47], 0))+
-  geom_point(mapping=aes(x = temp, y = dmixlnorm(temp, params_final[1],params_final[2],params_final[3], params_final[4], params_final[5])))
+temp = seq(0,2,0.001)
+#ggplot()+
+#  geom_histogram(mapping = aes(x = jitter_function(), y = ..density..), breaks = c(snowdata$endpoint[1:47], 0))+
+#  geom_point(mapping=aes(x = temp, y = dmixlnorm(temp, params_final[1],params_final[2],params_final[3], params_final[4], params_final[5])))
 hist(jitter_function(), breaks = c(snowdata$endpoint[1:47], 0))
-points(temp,dmixlnorm(temp, params_final[1],params_final[2],params_final[3], params_final[4],  params_final[5]))
+lines(temp,dmixlnorm(temp, params_final[1],params_final[2],params_final[3], params_final[4],  params_final[5]))
 
 
 
@@ -172,9 +172,9 @@ points(temp,dmixlnorm(temp, params_final[1],params_final[2],params_final[3], par
 
 
 
-ggplot()+
-  geom_function(dmixlnorm(temp, params_final[1],params_final[2],params_final[3], params_final[4], params_final[5]))
-hist(jitter_function(), breaks = c(snowdata$endpoint[1:47], 0))
+#ggplot()+
+#  geom_function(dmixlnorm(temp, params_final[1],params_final[2],params_final[3], params_final[4], params_final[5]))
+#hist(jitter_function(), breaks = c(snowdata$endpoint[1:47], 0))
 
 
 
@@ -193,10 +193,10 @@ boot_opt_function= function(snowdata3 = temp_snowdata){
   return(params_final)
 }
 
-bootstrap_n = 2000
+bootstrap_n = 20000
 #params_final is the truth in the botstrap world
 #now, we do EM and optim on this
-B = 50
+B = 100
 test_stat = rep(0, B)
 for(i in 1:B){
   print(i)
@@ -236,4 +236,5 @@ ecdf = cumsum(snowdata$retained....)/100
 e1cdf = pmixlnorm(snowdata$endpoint, params_final[1],params_final[2],params_final[3], params_final[4],  params_final[5])
 pval = (sum( test_stat> max(abs(e1cdf - ecdf))) + 1)/(B+1)
 
-pval
+
+save(params, params_final, pval,file="./Project-Snowflakes/final.RData")
