@@ -1,0 +1,89 @@
+---
+title: "Final Report on Snowflakes Data"
+output: html_document
+date: "2023-03-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE) 
+```
+The data we have is from a PhD student at an EPFL lab regarding snow-flake diameters. The data is binned with non-uniform bin-length. An extract of the data looks as follows - 
+
+
+```{r, echo = FALSE}
+snowdata <- read.csv("../Project-Snowflakes/1_snow_particles.csv")
+head(snowdata)
+```
+
+
+We see a bi-modal distribution on making a histogram of the data.
+
+
+```{r cars, include=FALSE, warnings=FALSE}
+library(ggplot2)
+
+#the hstogram for the binned data will not change even if we introduce the randomness as long as we use the same breakpoints. Thus, we do a histogram of this jittered data which is identical to the histogram we want.
+jitter_function= function(snowdata2 = snowdata){
+jittereddataset = rep(0, 1)
+counter = 1
+increment = 0
+num_loop = which(snowdata2$retained.... == 0)[1] - 1
+for(i in 1:num_loop){
+  increment = as.integer(snowdata2$retained....[i]*snowdata2$particles.detected[i]/100)
+  jittereddataset[counter:(counter+increment)] =   runif(increment, min = snowdata2$startpoint[i], max = snowdata2$endpoint[i])
+  counter = counter + increment
+}
+return(jittereddataset)
+}
+hist_plot = ggplot()+
+ geom_histogram(mapping = aes(x = jitter_function(), y = ..density..), breaks = c(snowdata$endpoint[1:47], 0))+
+  xlab('Snowflake Diameters')+
+  ylab('Density') 
+```
+
+
+
+
+
+```{r pressure, echo=FALSE,  fig.align="center", fig.cap="Figure 1: Histogram for the snowflake diameters"}
+hist_plot
+```
+
+From expert knowledge, we know that the data is supposed to be a mixture of two log-normal distributions. This is  not contrary to the data as it is bi modal. Furthermore, we see that the data is non-negative. Thus, a mixture of two log-normal dansities can be a good model for the data.
+
+We intend to fit a mixture of two lognormal distributions to this data. First we add randomness to the data by simulating the required number of points uniformly at random in each interval. Now, we use the EM algorithm to fit the points to this selection of points to get s set of paramters. For this algorithm, we pretend as if this selection of points was indeed the sample and use the corresponding density which is $$f(x) = 
+(1-\tau) \varphi_{\mu_1,\sigma_1^2}(x) + \tau \varphi_{\mu_2,\sigma_2^2}(x) =
+(1-\tau) \frac{1}{x \sqrt{2 \pi \sigma_1^2}} \exp\left( - \frac{1}{2} \left[ \frac{ln(x)-\mu_1}{\sigma_1} \right]^2 \right) + 
+\tau \frac{1}{x \sqrt{2 \pi \sigma_2^2}} \exp\left( - \frac{1}{2} \left[ \frac{ln(x)-\mu_2}{\sigma_2} \right]^2 \right)$$.
+
+Now, recognising that we had introduced randomness in the problem, we use the native optimisation function in R to optimise the true likelihood of the data. It is -
+$$\mathbb{L}(\mathcal{y}) = \Pi_{j=1}^{N} \Pi_{i=1}^{52} ( \int_{x_{i}}^{x_{upper}} f(t) dt) ^{\mathbf{1}\{ y_j \in (x_i, x_{i+1}) \}}  $$. 
+
+To avoid the optimisation going out of bounds, take the log of the variances and the inverse of the sigmoid of $\tau$ to make sure that the domain of optimisation is the entire $\mathbf{R}^5$ space and avoid and problems in optimisation.
+
+This gives us the final parameter values as $(\mu_1 , \mu2 , \sigma1 , \sigma2,\tau) = 5$. We see that this fits the data very well as shown by overlaying the corresponding density over the histogram. 
+
+```{r none, echo=FALSE,  fig.align="center", fig.cap="Figure 1: Histogram for the snowflake diameters"}
+load("../Project-Snowflakes/final.RData")
+dmixlnorm <- function(x, mu1, mu2, sigma1, sigma2, tau){
+  y <- (1-tau)*dlnorm(x,mu1,sigma1) + tau*dlnorm(x,mu2,sigma2)
+  return(y)
+}
+func_plot= function(x){
+  return(dmixlnorm(x, params_final[1],params_final[2],params_final[3], params_final[4], params_final[5]))
+}
+  
+  
+ggplot()+
+  geom_histogram(mapping = aes(x = jitter_function(), y = ..density..), breaks = c(snowdata$endpoint[1:47], 0))+
+  xlim(0,2)+
+  geom_function(fun = func_plot, colour = 'red', size = 1)
+```
+
+
+We see that the curve corresponding to the final parameters is very close to the histogram and overall, one can say that the fit of the curve looks plausible.
+
+Lastly, we do a goodness of fit test to the data using a parametric bootstrap to asses the plausibility that the distribution of snowflake diameters is adequately modeled by this mixture model.
+
+
+
