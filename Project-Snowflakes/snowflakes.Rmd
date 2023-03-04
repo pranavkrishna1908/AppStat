@@ -1,0 +1,27 @@
+---
+title: "snowflakes"
+output: html_document
+date: "2023-03-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The data we have is from a PhD student at an EPFL lab regarding snow-flake diameters. The data is binned with non-uniform bin-length. We remove the bins with zero entries and look at the data. We see a bi-modal distribution on making a histogram of the data.
+
+We know that the data is supposed to be a mixture of two log-normal distributions which is not contrary to the expert knowledge as the data is bi modal.
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
