@@ -68,11 +68,11 @@ reallikelihood = function( params){
 em_function = function(snowdata2 = snowdata){
   sample = jitter_function(snowdata2)
   N = length(sample)
-  mu1 = -2
-  mu2 = -0.6
-  sigma1_sq = 1
-  sigma2_sq = 4
-  tau = 0.8
+  mu1 = 10
+  mu2 = 20
+  sigma1_sq = 100
+  sigma2_sq = 1000
+  tau = 0.9999
   likelihood_obs = likelihood(sample,  mu1, mu2, sigma1_sq, sigma2_sq, tau)
   p = rep(0, N)
   piece1 = dlnorm(sample ,mean = mu2, sd = sqrt(sigma2_sq))*tau
@@ -196,7 +196,7 @@ boot_opt_function= function(snowdata3 = temp_snowdata){
 bootstrap_n = 20000
 #params_final is the truth in the botstrap world
 #now, we do EM and optim on this
-B = 100
+B = 5000
 test_stat = rep(0, B)
 for(i in 1:B){
   print(i)
