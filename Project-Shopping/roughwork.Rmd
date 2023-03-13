@@ -53,8 +53,7 @@ ggplot()+
 
 
 ggplot()+
-  geom_density(aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))
-
+  geom_histogram(aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))
 
 
 ggplot()+
@@ -65,9 +64,7 @@ ggplot()+
   geom_bar(aes(x = Data$month, colour = as.factor(y)))
 ggplot()+
   geom_bar(aes(x = Data$browser, colour = as.factor(y)))
-#seeprate in high and low traffic months
-
-
+#separate in high and low traffic months  
 ```
 
 ## Including Plots
@@ -77,7 +74,35 @@ You can also embed plots, for example:
 ```{r pressure, echo=FALSE}
 model1 = glm(purchase~.-1, data = Data)
 model2 = stepAIC(model1, k = log(nrow(Data)))
-model3 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day + I(special_day^2)- 1, data = Data)
+model3 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day + I(special_day^2)- 1, data = Data, family = binomial)
+
+
+
+
+library(pROC)
+AUC_eval <- function(gmodel,Data){
+set.seed(517)
+Folds <- matrix(sample(1:dim(Data)[1]), ncol=5)
+AUC <- rep(0,5)
+for(k in 1:5){
+train <- Data[-Folds[,k],]
+test <- Data[Folds[,k],]
+my_gm <- glm(gmodel$formula, family="binomial", data=train)
+test_pred <- predict(my_gm, newdata = test, type="response")
+AUC[k] <- auc(test$purchase,test_pred)
+}
+return(mean(AUC))
+}
+gm1 <- glm(purchase~., family="binomial", data=Data)
+AUC_eval(model3,Data)
+AUC_eval(model2,Data)
+
+
+
+
+
+
+
 ```
 
 
