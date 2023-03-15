@@ -6,6 +6,7 @@ date: "2023-03-08"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+load("E:/EPFL/AppStat/AppStat-359822/Project-Shopping/2_online_shopping.RData")
 ```
 
 ## R Markdown
@@ -35,8 +36,10 @@ c_names[3] = 'n_info'
 c_names[4] = 'time_info'
 c_names[18] = 'purchase'
 colnames(Data) = c_names
-Data$browser = fct_collapse(Data$browser, Other = c('3','6','7','8','9','10','11','12','13'))
+Data$browser = fct_collapse(Data$browser, Other = c('3','4', '5', '6','7','8','9','10','11','12','13'))
 Data$operating_systems = fct_collapse(Data$operating_systems, Other = c('5','6', '7','8'))
+
+Data$traffic_type = fct_collapse(Data$traffic_type, Other = c( '7','9','12','14','15','16','17','18','19'))
 y =  Data$purchase
 
 
@@ -45,12 +48,17 @@ ggplot()+
 
 
 ggplot()+
+  geom_density(aes(x = Data$product_related_duration,col = y))
+
+
+ggplot()+
   geom_density(aes(x = Data$time_admin[which(Data$time_admin<1100)],col = y[which(Data$time_admin<1100)]))
 
 
 ggplot()+
   geom_density(aes(x = Data$time_info,col = y))
-
+ggplot()+
+  geom_density(aes(x = Data$browser, colour = as.factor(y)))
 
 ggplot()+
   geom_histogram(aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))
@@ -64,6 +72,8 @@ ggplot()+
   geom_bar(aes(x = Data$month, colour = as.factor(y)))
 ggplot()+
   geom_bar(aes(x = Data$browser, colour = as.factor(y)))
+ggplot()+
+  geom_bar(aes(x = Data$weekend, colour = as.factor(y)))
 #separate in high and low traffic months  
 ```
 
@@ -72,13 +82,6 @@ ggplot()+
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
-model1 = glm(purchase~.-1, data = Data)
-model2 = stepAIC(model1, k = log(nrow(Data)))
-model3 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day + I(special_day^2)- 1, data = Data, family = binomial)
-
-
-
-
 library(pROC)
 AUC_eval <- function(gmodel,Data){
 set.seed(517)
@@ -93,9 +96,89 @@ AUC[k] <- auc(test$purchase,test_pred)
 }
 return(mean(AUC))
 }
-gm1 <- glm(purchase~., family="binomial", data=Data)
+model1 = glm(purchase~.-1, data = Data, family=binomial)
+AUC_eval(model1,Data)#just to see
+
+model2 = stepAIC(model1, k = log(nrow(Data)), direction = 'both')
+AUC_eval(model2,Data)#benchmark, looks good, we increased the auc
+
+model3 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day + I(special_day^2)- 1, data = Data, family = binomial)
+AUC_eval(model3,Data)#Rejected
+#try without quadratic term
+
+model3 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day - 1, data = Data, family = binomial)
 AUC_eval(model3,Data)
-AUC_eval(model2,Data)
+#doesnt help
+#give up on special day
+
+
+#on looking at the Anova(model1,type=2,test="LR") table, we see that traffic type seems inmportant but is not in the model. we introduct it
+model4 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + traffic_type - 1, data = Data, family = binomial)
+AUC_eval(model4,Data)
+#even this does not improve the auc
+
+modeltemp = glm(formula = purchase ~ product_related_duration + exit_rates + 
+                 page_values + month - 1 + n_admin + n_info, family = binomial, data = Data)
+AUC_eval(modeltemp,Data)#we see the auc
+
+#try a few models by increasing the number of covariates
+AUC_eval(glm(formula = purchase ~ product_related_duration + exit_rates +        page_values + month - 1 + n_admin + n_info+ bounce_rates , family = binomial, data = Data),Data)#we see the 
+
+
+
+
+
+
+```
+We are close to the bechmark auc using the entire model and also the bare-bones model.
+First, we try to improve the bare bones mdel from stepAIC. The addition od special day and its quadratic term do not improve the auc
+
+```{r}
+AUC_eval(glm(formula = purchase ~ product_related_duration + exit_rates +        page_values + month - 1 + n_admin + n_info*time_info+ bounce_rates , family = binomial, data = Data),Data)#we see the 
+
+plot(glm(formula = purchase ~ product_related_duration + exit_rates +        page_values + month - 1 + n_admin + n_info*time_info+ bounce_rates , family = binomial, data = Data))#remove some observations?
+```
+
+
+```{r}
+glm(purchase~region, data = Data, family = binomial)
+#give up on region??yes
+Data = Data[,-14]
+
+```
+
+
+
+
+
+
+
+
+
+ask :
+'AUC_eval(glm(formula = purchase ~ product_related_duration + exit_rates +        page_values + month - 1 + n_admin + n_info+ bounce_rates , data = Data),Data)
+has higher auc even without the binomial thing
+ also, keams is like unsupervised, so lik pca. HOw to decide the number of clusters
+ also, auc lower if more paramteres
+ also, auc goes low with weekend, why is that possible
+ also, if I fit one observation with one paramter, and I give up something in the estimation of the other paramters if I had dropped it?
+ also, using the boxcox with non-positive data
+ 
+ 
+ 
+ 
+```{r}
+AUC_eval(glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1 + n_admin + n_info*time_info+ bounce_rates , family = binomial, data = Data),Data)#we see the 
+gm0  = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1 + n_admin + n_info*time_info+ bounce_rates , family = binomial, data = Data)
+```
+ 
+```{r}
+Data %>%
+mutate(res=resid(gm0),operating_systems=as.numeric(operating_systems), browser=as.numeric(browser), #region = as.numeric(region), 
+traffic_type = as.numeric(traffic_type))%>%
+pivot_longer(-res) %>% ggplot(aes(y=res,x=value)) +
+facet_wrap(~ name, scales = "free") + geom_point() + geom_smooth()
+
 
 
 
@@ -104,5 +187,4 @@ AUC_eval(model2,Data)
 
 
 ```
-
 
