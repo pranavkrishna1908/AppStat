@@ -7,22 +7,7 @@ date: "2023-03-08"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 load("E:/EPFL/AppStat/AppStat-359822/Project-Shopping/2_online_shopping.RData")
-```
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-str(Data)
-library(MASS)
-library(car)
-library(pROC)
-library(tidyverse)
-library(forcats)
-library(janitor)
+library(MASS);library(car);library(pROC);library(tidyverse);library(forcats);library(janitor)
 original_data = Data
 Data$OperatingSystems = as.factor(Data$OperatingSystems)
 Data$Browser = as.factor(Data$Browser)
@@ -41,10 +26,22 @@ Data$operating_systems = fct_collapse(Data$operating_systems, Other = c('5','6',
 
 Data$traffic_type = fct_collapse(Data$traffic_type, Other = c( '7','9','12','14','15','16','17','18','19'))
 y =  Data$purchase
+Data$nocookies = (Data$n_admin == 0 & Data$n_info == 0 & Data$time_admin == 0 & Data$time_info == 0 )
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+str(Data)
+
 
 
 ggplot()+
-  geom_density(aes(x = Data$product_related_duration[which(Data$product_related_duration <110)],col = y[which(   Data$product_related_duration <110)]))
+  geom_density(position = 'dodge',aes(x = Data$product_related_duration[which(Data$product_related_duration <110)],col = y[which(   Data$product_related_duration <110)]))
 
 
 ggplot()+
@@ -60,8 +57,35 @@ ggplot()+
 ggplot()+
   geom_density(aes(x = Data$browser, colour = as.factor(y)))
 
+
+ggplot()+
+  geom_point(aes(x = Data$time_admin, y = Data$product_related_duration), col = ifelse(Data$purchase, 'red', 'blue' ))
+
+
+
+ggplot()+
+  geom_point(aes(x = Data$exit_rates, y = Data$page_values), col = ifelse(Data$purchase, 'red', 'blue' ))
+
+
+
+
+
+
 ggplot()+
   geom_histogram(aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))
+
+ggplot()+
+  geom_density(position = 'dodge',aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))
+
+
+
+
+
+
+
+
+
+
 
 
 ggplot()+
@@ -73,7 +97,7 @@ ggplot()+
 ggplot()+
   geom_bar(aes(x = Data$browser, colour = as.factor(y)))
 ggplot()+
-  geom_bar(aes(x = Data$weekend, colour = as.factor(y)))
+  geom_bar(aes(x = Data$weekend, colour = as.factor(y)),position = "dodge2")
 #separate in high and low traffic months  
 ```
 
@@ -102,33 +126,21 @@ AUC_eval(model1,Data)#just to see
 model2 = stepAIC(model1, k = log(nrow(Data)), direction = 'both')
 AUC_eval(model2,Data)#benchmark, looks good, we increased the auc
 
-model3 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day + I(special_day^2)- 1, data = Data, family = binomial)
-AUC_eval(model3,Data)#Rejected
-#try without quadratic term
+model3 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1, family = binomial, data = Data)
 
-model3 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day - 1, data = Data, family = binomial)
+model3_prime = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day - 1, data = Data, family = binomial)
 AUC_eval(model3,Data)
-#doesnt help
-#give up on special day
 
+model3_doubleprime = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + special_day + I(special_day^2)- 1, data = Data, family = binomial)
+AUC_eval(model3,Data)#rejected, p value is 0.8
 
 #on looking at the Anova(model1,type=2,test="LR") table, we see that traffic type seems inmportant but is not in the model. we introduct it
 model4 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month + visitor_type + traffic_type - 1, data = Data, family = binomial)
 AUC_eval(model4,Data)
-#even this does not improve the auc
 
-modeltemp = glm(formula = purchase ~ product_related_duration + exit_rates + 
-                 page_values + month - 1 + n_admin + n_info, family = binomial, data = Data)
+
+modeltemp = glm(formula = purchase ~ product_related_duration + exit_rates + (page_values)**2 + month - 1 + n_admin + n_info + visitor_type + traffic_type, family = binomial, data = Data)
 AUC_eval(modeltemp,Data)#we see the auc
-
-#try a few models by increasing the number of covariates
-AUC_eval(glm(formula = purchase ~ product_related_duration + exit_rates +        page_values + month - 1 + n_admin + n_info+ bounce_rates , family = binomial, data = Data),Data)#we see the 
-
-
-
-
-
-
 ```
 We are close to the bechmark auc using the entire model and also the bare-bones model.
 First, we try to improve the bare bones mdel from stepAIC. The addition od special day and its quadratic term do not improve the auc
@@ -158,10 +170,17 @@ Data = Data[,-14]
 ask :
 'AUC_eval(glm(formula = purchase ~ product_related_duration + exit_rates +        page_values + month - 1 + n_admin + n_info+ bounce_rates , data = Data),Data)
 has higher auc even without the binomial thing
+
  also, keams is like unsupervised, so lik pca. HOw to decide the number of clusters
+ 
  also, auc lower if more paramteres
+ 
+ also, AUC lower when I add extra terms and interactions
+ 
  also, auc goes low with weekend, why is that possible
+ 
  also, if I fit one observation with one paramter, and I give up something in the estimation of the other paramters if I had dropped it?
+ 
  also, using the boxcox with non-positive data
  
  
@@ -169,22 +188,57 @@ has higher auc even without the binomial thing
  
 ```{r}
 AUC_eval(glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1 + n_admin + n_info*time_info+ bounce_rates , family = binomial, data = Data),Data)#we see the 
-gm0  = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1 + n_admin + n_info*time_info+ bounce_rates , family = binomial, data = Data)
 ```
  
 ```{r}
+gm0  = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1 + n_admin + n_info*time_info+ bounce_rates +I(product_related_duration^2), family = binomial, data = Data)
 Data %>%
-mutate(res=resid(gm0),operating_systems=as.numeric(operating_systems), browser=as.numeric(browser), #region = as.numeric(region), 
+mutate(res=resid(gm0),operating_systems=as.numeric(operating_systems), month = as.numeric(month), browser=as.numeric(browser), region = as.numeric(region),  visitor_type = as.numeric(visitor_type),
 traffic_type = as.numeric(traffic_type))%>%
-pivot_longer(-res) %>% ggplot(aes(y=res,x=value)) +
+pivot_longer(-res)%>% ggplot(aes(y=res,x=value)) +
 facet_wrap(~ name, scales = "free") + geom_point() + geom_smooth()
 
 
+```
+
+
+
+```{r}
+errorsdata = Data
+errorsdata[,18] = residuals(gm0)
+colnames(errorsdata)[18] = 'res'
+
+for(i in 1:ncol(Data)){
+  print(i)
+ggplot(data = errorsdata) +
+ geom_point( aes(y=res,x=Data[,i]))+
+  geom_smooth( aes(y=res,x=n_admin))
+}
+modeltemp2 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1   + I(nocookies)*exit_rates + I(nocookies)*page_values + I(nocookies)*product_related_duration, family = binomial, data = Data)
+
+modeltemp2 = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1   + I(nocookies)*exit_rates + I(nocookies)*page_values + I(nocookies)*product_related_duration +exit_rates:page_values + I(nocookies)*product_related_duration:page_values, family = binomial, data = Data)
+
+
+modeltemp2 = glm(formula = purchase ~ product_related_duration + exit_rates + sqrt(page_values) + month - 1   + I(nocookies)*exit_rates + I(nocookies)*page_values + I(nocookies)*product_related_duration +exit_rates:page_values + I(nocookies)*product_related_duration:page_values, family = binomial, data = Data)
 
 
 
 
 
+modeltemp2 = glm(formula = purchase ~ sqrt(product_related_duration) + sqrt(exit_rates) + sqrt(page_values) + month - 1   + I(nocookies)*exit_rates + I(nocookies)*page_values + I(nocookies)*product_related_duration +exit_rates:page_values + I(nocookies)*product_related_duration:page_values, family = binomial, data = Data)
+
+
+
+
+
+modeltemp2 = glm(formula = purchase ~  + sqrt(page_values) + month - 1   + I(nocookies)*exit_rates + I(nocookies)*page_values + I(nocookies)*product_related_duration 
+                 +exit_rates:page_values 
+                 + I(nocookies)*product_related_duration:page_values, family = binomial, data = Data)
+
+modeltemp2 = glm(formula = purchase ~  + sqrt(page_values) + month - 1   + I(nocookies)*exit_rates + I(nocookies)*page_values + I(nocookies)*product_related_duration 
+                 +exit_rates:page_values 
+                 + product_related_duration:page_values,
+                 family = binomial, data = Data)
 
 ```
 

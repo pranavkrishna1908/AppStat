@@ -1,0 +1,182 @@
+---
+title: "Report on Shopping Data-set"
+output: html_document
+date: "2023-03-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MASS);library(car);library(pROC);library(tidyverse);library(forcats);library(janitor)
+load("E:/EPFL/AppStat/AppStat-359822/Project-Shopping/2_online_shopping.RData")
+original_data = Data
+Data$OperatingSystems = as.factor(Data$OperatingSystems)
+Data$Browser = as.factor(Data$Browser)
+Data$Region = as.factor(Data$Region)
+Data$TrafficType = as.factor(Data$TrafficType)
+Data = clean_names(Data)
+c_names = colnames(Data)
+c_names[1] = 'n_admin'
+c_names[2] = 'time_admin'
+c_names[3] = 'n_info'
+c_names[4] = 'time_info'
+c_names[18] = 'purchase'
+colnames(Data) = c_names
+Data$browser = fct_collapse(Data$browser, Other = c('3','4', '5', '6','7','8','9','10','11','12','13'))
+Data$operating_systems = fct_collapse(Data$operating_systems, Other = c('5','6', '7','8'))
+Data$traffic_type = fct_collapse(Data$traffic_type, Other = c( '7','9','12','14','15','16','17','18','19'))
+y =  Data$purchase
+Data$nocookies = (Data$n_admin == 0 & Data$n_info == 0 & Data$time_admin == 0 & Data$time_info == 0 )
+```
+
+## R Markdown
+
+The data-set consists of information on 11630 sessions of a user visiting an e-commerce website wherein we have 17 covariates and the response variable, an indicator if there was a purchase. We look for an explanatory model with specific attention to the data-related features in the data. Lastly, we report the AUC for the final model.$$ IMbalanced data $$
+
+First, we discuss the data-related features. These are the Month, Weekend and Special Day. Special Day indicates the closeness of the session to an occasion like Mother's day taking into account Delivery and Other factors. We explore the construction of this feature via the following graph -  
+
+```{r cars}
+ggplot()+
+    geom_histogram(position = 'dodge',aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))+scale_x_continuous(breaks = seq(0,1,0.2))+
+  xlab('Special Day')+ylab('Count') +scale_color_discrete(name = 'Staus of Purchase')+ scale_fill_continuous(labels = c('na', 'ma'))
+
+# 
+# ggplot()+
+#     geom_histogram(position = 'dodge',aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))+
+# 
+# ggplot()+
+#     geom_histogram(position = 'dodge',aes(x = Data$special_day, col = y))+
+#   labs(xlab = 'na')
+```
+
+We observe the lack of a ilnear relationship between the number of slaes and the Special-Day covariate in this plot. This suggests that the feature Special Day may not be very informative about the number of purchases in the session or that the relationship may not be linear. It is also possible that it is informative about the price of the items/services but we do not have data regarding this to make a definitive comment. 
+
+
+
+
+## Statistical Analysis
+
+We start with a model containing all the covariates and use the BIC for prelimnary feature selection. We use the stepAIC function in the MASS package to arrive at the model 
+```{r pressure, echo=FALSE}
+model1 = glm(purchase~.-1, data = Data, family=binomial)
+model2 = stepAIC(model1, k = log(nrow(Data)), direction = 'both')
+```
+$$log(\frac{p}{1-p}) = Prod_{Duration} + Exit_{Rates} + Page_{Values} + Month$$
+
+Now,we expect that a few sessions would have disabled cookies. To incorporate this phenomenon in the model, we allow the interaction of this phenomenon wth the covariates in model 2. Thus, we get the model 3 as -
+```{r model3}
+model3 = glm(formula = purchase ~ product_related_duration 
+             + exit_rates + page_values + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration, 
+             family = binomial, data = Data)
+
+```
+
+Now, we consider the possible interaction terms which can be helpful for explaining the variability in the model. Among the selected covariates, we expect to have some interaction between Page Value and Exit rates. We allow for all possible interactions in the model between the non-categoical predictors to reach the fourth model 
+
+```{r model4}
+model4 = glm(formula = purchase ~ product_related_duration 
+             + exit_rates + page_values + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration + exit_rates:page_values
+             + product_related_duration:exit_rates
+             + product_related_duration:page_values, 
+             family = binomial, data = Data)
+
+model6 = glm(formula = purchase ~  sqrt(page_values) + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration + exit_rates:page_values
+             + product_related_duration:exit_rates
+             + product_related_duration:page_values, 
+             family = binomial, data = Data)
+
+```
+ To simplify the model, we use the Anova function from car to do a likelihood Ratio Test to asses the importance of each covariate. We see that the interaction between the exit rate and page value is not significant and we decide to drop it. We also decide to add the corresponding interaction terms for the no-coookies case.
+```{r model5}
+model5 = glm(formula = purchase ~ product_related_duration
+             + exit_rates + page_values + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration + exit_rates:page_values
+             + product_related_duration:exit_rates
+             + product_related_duration:page_values
+             + I(nocookies)*product_related_duration:page_values
+             + I(nocookies)*product_related_duration:exit_rates, 
+             family = binomial, data = Data)
+```
+We compare this model to the second model using the likelihood ratio test to get the analysis of deviance table. We see that 
+```{r, echo = FALSE}
+anova(model2, model5, test = 'LR')
+```
+ % latex table generated in R 4.2.1 by xtable 1.8-4 package
+% Sat Mar 18 00:10:51 2023
+\begin{table}[ht]
+\centering
+\begin{tabular}{lrrrrr}
+  \hline
+ & Resid. Df & Resid. Dev & Df & Deviance & Pr($>$Chi) \\ 
+  \hline
+1 & 11616 & 7123.82 &  &  &  \\ 
+  2 & 11608 & 6873.62 & 8 & 250.19 & 0.0000 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+Thus, the final model explains significant ly more variability in the Data compared to the Bare-bones model using the BIC feature selection. Now, we will use the Anova function in car to asses the imporatance of eah covariate and remove the less important ones. We see that all terms are imporatant and we can report an AUC of 0.8951.
+```{r}
+Anova(model5, test = 'LR', type = 2)
+```
+## Feature modification
+
+We recognise that the product related duration, exit rates and page values are all very skewed to the left and a significant portion of the data is very close to 0, with quite a few entries themselves being zero. Since we cannot take a log-transform, we try to use the model5 using a square root transform of these features to asses the performance of the model using the AUC.  
+```{r model6}
+model6 = glm(formula = purchase ~ sqrt(product_related_duration)
+             + sqrt(exit_rates) + sqrt(page_values) + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration + exit_rates:page_values
+             + product_related_duration:exit_rates
+             + product_related_duration:page_values
+             + I(nocookies)*product_related_duration:page_values
+             + I(nocookies)*product_related_duration:exit_rates, 
+             family = binomial, data = Data)
+AUC_eval(model6, Data)
+```
+We see a significant rise in the AUC(0.919) for this transformation, thus, we decide to keep this transformation, possibly trading some interpretability for significantly improved performance. On assesing the importance of the various covariates, we see that the product related duration and exit rates stop being useful in themselves. Similarly, we see that the interaction between nocookies and roduct related duration stops being significant and the interaction between exit rates and product related duartion and exit rates for the no cookies case stops being significant. Thus, we reach the next model as  
+```{r model7}
+model7prime = glm(formula = purchase ~  sqrt(page_values) + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration + exit_rates:page_values
+             + product_related_duration:exit_rates
+             + product_related_duration:page_values
+             + I(nocookies)*product_related_duration:page_values
+             + I(nocookies)*product_related_duration:exit_rates, 
+             family = binomial, data = Data)
+```
+
+## Discussion of Date Related Features
+We observe that the Weekend and Psecial Day covariates in the model were removed in the initial stage itself by the BIC feature selection. Thus, we use the GLRT to asses importance of these features and how the odds of a purchase are affected by it. 
+```{r date}
+model6prime = glm(formula = purchase ~ sqrt(product_related_duration)
+             + sqrt(exit_rates) + sqrt(page_values) + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration + exit_rates:page_values
+             + product_related_duration:exit_rates
+             + product_related_duration:page_values
+             + I(nocookies)*product_related_duration:page_values
+             + I(nocookies)*product_related_duration:exit_rates
+             + weekend + special_day, 
+             family = binomial, data = Data)
+
+
+model7prime = glm(formula = purchase ~  sqrt(page_values) + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration + exit_rates:page_values
+             + product_related_duration:exit_rates
+             + product_related_duration:page_values
+             + I(nocookies)*product_related_duration:page_values
+             + I(nocookies)*product_related_duration:exit_rates
+             + weekend + special_day, 
+             family = binomial, data = Data)
+anova(model6, model6prime, test = 'LR')
+anova(model7, model7prime, test = 'LR')
+```
+For both model6 and model7, we see that the addition of extra data-related feaures does not improve the fit. THus, we discard these two features.
