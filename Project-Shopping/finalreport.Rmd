@@ -6,7 +6,7 @@ date: "2023-03-17"
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-library(MASS);library(car);library(pROC);library(tidyverse);library(forcats);library(janitor)
+library(MASS);library(car);library(pROC);library(tidyverse);library(forcats);library(janitor); 
 load("E:/EPFL/AppStat/AppStat-359822/Project-Shopping/2_online_shopping.RData")
 original_data = Data
 Data$OperatingSystems = as.factor(Data$OperatingSystems)
@@ -26,54 +26,112 @@ Data$operating_systems = fct_collapse(Data$operating_systems, Other = c('5','6',
 Data$traffic_type = fct_collapse(Data$traffic_type, Other = c( '7','9','12','14','15','16','17','18','19'))
 y =  Data$purchase
 Data$nocookies = (Data$n_admin == 0 & Data$n_info == 0 & Data$time_admin == 0 & Data$time_info == 0 )
+AUC_eval <- function(gmodel,Data){
+set.seed(517)
+Folds <- matrix(sample(1:dim(Data)[1]), ncol=5)
+AUC <- rep(0,5)
+for(k in 1:5){
+train <- Data[-Folds[,k],]
+test <- Data[Folds[,k],]
+my_gm <- glm(gmodel$formula, family="binomial", data=train)
+test_pred <- predict(my_gm, newdata = test, type="response")
+AUC[k] <- auc(test$purchase,test_pred)
+}
+return(mean(AUC))
+}
 ```
 
-## R Markdown
+## Introduction
 
-The data-set consists of information on 11630 sessions of a user visiting an e-commerce website wherein we have 17 covariates and the response variable, an indicator if there was a purchase. We look for an explanatory model with specific attention to the data-related features in the data. Lastly, we report the AUC for the final model.$$ IMbalanced data $$
+The data-set consists of information on 11630 user sessions of  an e-commerce website wherein we have 17 covariates and the response variable, an indicator to show if a purchase was made. We look for an explanatory model with specific attention to the data-related features in the data. Lastly, we report the AUC for the final model. We observe that the data set is heavily imbalanced with only 1905 instances where a purchase is made. We look at the structure of the data - 
+```{r}
+str(Data)
+```
 
-First, we discuss the data-related features. These are the Month, Weekend and Special Day. Special Day indicates the closeness of the session to an occasion like Mother's day taking into account Delivery and Other factors. We explore the construction of this feature via the following graph -  
 
-```{r cars}
-ggplot()+
+## Exploration of the Data
+
+First, we discuss the data-related features. These are the Month, Weekend and Special Day. Special Day indicates the closeness of the session to an occasion like Christmas, taking into account Delivery and Other factors. We explore the construction of this feature via the following graph -  
+
+```{r cars, warning=FALSE, echo = FALSE}
+temp = ggplot()+
     geom_histogram(position = 'dodge',aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))+scale_x_continuous(breaks = seq(0,1,0.2))+
   xlab('Special Day')+ylab('Count') +scale_color_discrete(name = 'Staus of Purchase')+ scale_fill_continuous(labels = c('na', 'ma'))
-
-# 
-# ggplot()+
-#     geom_histogram(position = 'dodge',aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))+
-# 
-# ggplot()+
-#     geom_histogram(position = 'dodge',aes(x = Data$special_day, col = y))+
-#   labs(xlab = 'na')
+temp
 ```
 
-We observe the lack of a ilnear relationship between the number of slaes and the Special-Day covariate in this plot. This suggests that the feature Special Day may not be very informative about the number of purchases in the session or that the relationship may not be linear. It is also possible that it is informative about the price of the items/services but we do not have data regarding this to make a definitive comment. 
+We observe the lack of a linear relationship between the number of sales and the Special-Day covariate in this plot. This suggests that the feature Special Day may not be very informative about the number of purchases in the session or that the relationship may not be linear. It is also possible that it is informative about the price of the items/services but we do not have data regarding this to make a definitive comment. 
 
+For the month, we see in Table 1 that while we see the largest percentage of session with sales as a percentage of total sessions, we also see that the percentage of session that are converted to sales is very low in February compared to other months. Furthermore, we observe that the data does not have sessions for January and April. Thus, we were not able to club the months according to Pairs/Quarters and had t leave them as is.
+
+<!-- html table generated in R 4.2.1 by xtable 1.8-4 package -->
+<!-- Sun Mar 19 13:37:31 2023 -->
+<table border=1, align="center">
+<caption align="bottom"> Table 1: Effect of Month on Sale for each session </caption>
+
+<tr> <th>  </th> <th> Feature </th> <th> Aug </th> <th> Dec </th> <th> Feb </th> <th> Jul </th> <th> June </th> <th> Mar </th> <th> May </th> <th> Nov </th> <th> Oct </th> <th> Sep </th>  </tr>
+  <tr> <td align="right"> 1 </td> <td align="right"> Sessions without a Sale </td> <td align="right"> 345.00 </td> <td align="right"> 1411.00 </td> <td align="right"> 147.00 </td> <td align="right"> 345.00 </td> <td align="right"> 233.00 </td> <td align="right"> 1583.00 </td> <td align="right"> 2786.00 </td> <td align="right"> 2091.00 </td> <td align="right"> 428.00 </td> <td align="right"> 356.00 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td align="right"> Sessions with a Sale </td> <td align="right"> 76.00 </td> <td align="right"> 216.00 </td> <td align="right"> 3.00 </td> <td align="right"> 66.00 </td> <td align="right"> 29.00 </td> <td align="right"> 192.00 </td> <td align="right"> 365.00 </td> <td align="right"> 758.00 </td> <td align="right"> 114.00 </td> <td align="right"> 86.00 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td align="right"> Total Sessions </td> <td align="right"> 421.00 </td> <td align="right"> 1627.00 </td> <td align="right"> 150.00 </td> <td align="right"> 411.00 </td> <td align="right"> 262.00 </td> <td align="right"> 1775.00 </td> <td align="right"> 3151.00 </td> <td align="right"> 2849.00 </td> <td align="right"> 542.00 </td> <td align="right"> 442.00 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td align="right"> Percentage of Sessions ending with a Sale </td> <td align="right"> 18.05 </td> <td align="right"> 13.28 </td> <td align="right"> 2.00 </td> <td align="right"> 16.06 </td> <td align="right"> 11.07 </td> <td align="right"> 10.82 </td> <td align="right"> 11.58 </td> <td align="right"> 26.61 </td> <td align="right"> 21.03 </td> <td align="right"> 19.46 </td> </tr>
+   </table>
+
+Similarly, we see  in Table 2 that the weekend feature is not particularly informative as the proportion of sales do not vary significantly in either case for the Weekend covariate.
+
+<!-- html table generated in R 4.2.1 by xtable 1.8-4 package -->
+<!-- Sun Mar 19 13:41:56 2023 -->
+<table border=1, align="center">
+<caption align="bottom"> Table 2: Effect of Weekend on Sale for each session </caption>
+<tr> <th>  </th> <th>      </th> <th> FALSE </th> <th> TRUE </th>  </tr>
+  <tr> <td align="right"> 1 </td> <td align="right"> No Purchase </td> <td align="right"> 7481.00 </td> <td align="right"> 1406.00 </td> </tr>
+  <tr> <td align="right"> 2 </td> <td align="right"> Purchase </td> <td align="right"> 2244.00 </td> <td align="right"> 499.00 </td> </tr>
+  <tr> <td align="right"> 3 </td> <td align="right"> Total Sessions </td> <td align="right"> 9725.00 </td> <td align="right"> 1905.00 </td> </tr>
+  <tr> <td align="right"> 4 </td> <td align="right"> Percentage of Sessions ending wih a Sale </td> <td align="right"> 23.07 </td> <td align="right"> 26.19 </td> </tr>
+   </table>
+
+
+Now, we look at the Google Analytics features. They are the Bonce Rate, Page Value and Exit Rate. The Page Value  is a representation of the relative importance of the monetary value of a page for the advertiser/customer. While it is not readily interpretable, it is supposed to inform the advertiser about the average monetary value generated by the page in each session. More information is available at <a href = "https://support.google.com/analytics/answer/2695658?hl=en"> Google </a>. One would also imagine that the customer would terminate the session after making the purchase. In such a case, the exit-rate covariate, which is the average exit rate of the visited pages in a session, in the data will also be useful. Analytics also reports the average Bounce Rate, where Bounce rate is the proportion of users who exit the webpage without triggering any new requests during their session. We do not believe this feature is useful, as in our experience, after making a purchase, the user usually checks the Delivery data or some other useful information on the webpage.
+
+Thus, to asses the utility of Page Value and Bounce rate, we make a scatter plot of these features with the colour indicating if a Sale was made. 
+```{r exitratesetc, include = FALSE}
+plotData = Data
+plotData$purchase = ifelse(Data$purchase, 'red', 'blue' )
+ggplot()+
+  geom_point(aes(x = plotData$exit_rates, y = Data$page_values, colour = plotData$purchase))+ 
+  xlab('Exit Rate')+
+  ylab('Page Value')+
+  scale_color_discrete(name = 'Sale', labels = c('Yes', 'No'))
+```
+
+We observe that our intuition regarding Exit Rate, in that a large average Exit rate corresponds to a sale in the session, was correct. It is not clear that the Page Value is useful, as the sessions with a high page value don't necessarily correspond to a session where a purchase was made. We cannot  discard this covariate at this stage as it is supposed to encode the importance of a webpage by construction. In the later analysis, we can choose to discard it if it is not useful.
+
+We also observe that the two features appear to be inversely correlated, thus being against the intuition that highly valuable/target pages for a sale are the pages with a high Page Value. On calculating the correlation, we observe that it is -0.186. Thus, even though the correlation is negative, it is not highly negative, and we might be able to extract some useful information from these two covariates.
+
+The Data also has information related to the number of Informational, Administrative and Product related pages visited during each session and the time spent on each category. Since these covariates span a large range and are extremely skewed to the left, we were not able to find a good way to visualise them.
+
+Lastly, we observe that we have data regarding miscellaneous features like Operating Systems, Browser, Region, Traffic Type and Visitor type. We choose to not explore the Browser, Operating System and Region because we do not expect them to be informative. 
 
 
 
 ## Statistical Analysis
 
 We start with a model containing all the covariates and use the BIC for prelimnary feature selection. We use the stepAIC function in the MASS package to arrive at the model 
-```{r pressure, echo=FALSE}
+```{r pressure, include=FALSE}
 model1 = glm(purchase~.-1, data = Data, family=binomial)
 model2 = stepAIC(model1, k = log(nrow(Data)), direction = 'both')
 ```
-$$log(\frac{p}{1-p}) = Prod_{Duration} + Exit_{Rates} + Page_{Values} + Month$$
+$$log(\frac{p}{1-p}) = 7.98 \times 10^{-5}\cdot \text{Prod}_{\text{Duration}} - 0.180 \cdot \text{Exit Rate} + 8.09 \times 10^{-2}\cdot \text{Page Values} + C_{\text{Month}} \text{Month}$$
 
-Now,we expect that a few sessions would have disabled cookies. To incorporate this phenomenon in the model, we allow the interaction of this phenomenon wth the covariates in model 2. Thus, we get the model 3 as -
+Now, we expect that a few sessions would have disabled cookies. We decide to mark a session to have disabled cookies if both the number and of and the time spent on Administrative and Informational Pages is zero. To incorporate this phenomenon in the model, we allow the interaction of this phenomenon with the non-factor covariates in model 2. Thus, we get the model 3 as -
 ```{r model3}
 model3 = glm(formula = purchase ~ product_related_duration 
              + exit_rates + page_values + month - 1   
              + I(nocookies)*exit_rates + I(nocookies)*page_values 
              + I(nocookies)*product_related_duration, 
              family = binomial, data = Data)
-
 ```
 
 Now, we consider the possible interaction terms which can be helpful for explaining the variability in the model. Among the selected covariates, we expect to have some interaction between Page Value and Exit rates. We allow for all possible interactions in the model between the non-categoical predictors to reach the fourth model 
-
 ```{r model4}
 model4 = glm(formula = purchase ~ product_related_duration 
              + exit_rates + page_values + month - 1   
@@ -83,16 +141,6 @@ model4 = glm(formula = purchase ~ product_related_duration
              + product_related_duration:page_values, 
              family = binomial, data = Data)
 
-model6 = glm(formula = purchase ~  sqrt(page_values) + month - 1   
-             + I(nocookies)*exit_rates + I(nocookies)*page_values 
-             + I(nocookies)*product_related_duration + exit_rates:page_values
-             + product_related_duration:exit_rates
-             + product_related_duration:page_values, 
-             family = binomial, data = Data)
-
-```
- To simplify the model, we use the Anova function from car to do a likelihood Ratio Test to asses the importance of each covariate. We see that the interaction between the exit rate and page value is not significant and we decide to drop it. We also decide to add the corresponding interaction terms for the no-coookies case.
-```{r model5}
 model5 = glm(formula = purchase ~ product_related_duration
              + exit_rates + page_values + month - 1   
              + I(nocookies)*exit_rates + I(nocookies)*page_values 
@@ -101,6 +149,15 @@ model5 = glm(formula = purchase ~ product_related_duration
              + product_related_duration:page_values
              + I(nocookies)*product_related_duration:page_values
              + I(nocookies)*product_related_duration:exit_rates, 
+             family = binomial, data = Data)
+```
+ To simplify the model, we use the Anova function from the 'car' package to do a likelihood Ratio Test to asses the importance of each covariate. We see that the interaction between the exit rate and page value is not significant and we decide to drop it. We also decide to add the corresponding interaction terms for the no-coookies case.
+```{r model5}
+model6 = glm(formula = purchase ~  sqrt(page_values) + month - 1   
+             + I(nocookies)*exit_rates + I(nocookies)*page_values 
+             + I(nocookies)*product_related_duration + exit_rates:page_values
+             + product_related_duration:exit_rates
+             + product_related_duration:page_values, 
              family = binomial, data = Data)
 ```
 We compare this model to the second model using the likelihood ratio test to get the analysis of deviance table. We see that 
@@ -142,7 +199,7 @@ AUC_eval(model6, Data)
 ```
 We see a significant rise in the AUC(0.919) for this transformation, thus, we decide to keep this transformation, possibly trading some interpretability for significantly improved performance. On assesing the importance of the various covariates, we see that the product related duration and exit rates stop being useful in themselves. Similarly, we see that the interaction between nocookies and roduct related duration stops being significant and the interaction between exit rates and product related duartion and exit rates for the no cookies case stops being significant. Thus, we reach the next model as  
 ```{r model7}
-model7prime = glm(formula = purchase ~  sqrt(page_values) + month - 1   
+model7 = glm(formula = purchase ~  sqrt(page_values) + month - 1   
              + I(nocookies)*exit_rates + I(nocookies)*page_values 
              + I(nocookies)*product_related_duration + exit_rates:page_values
              + product_related_duration:exit_rates
@@ -179,4 +236,4 @@ model7prime = glm(formula = purchase ~  sqrt(page_values) + month - 1
 anova(model6, model6prime, test = 'LR')
 anova(model7, model7prime, test = 'LR')
 ```
-For both model6 and model7, we see that the addition of extra data-related feaures does not improve the fit. THus, we discard these two features.
+For both model6 and model7, we see that the addition of extra data-related features does not improve the fit. Thus, we discard these two features.

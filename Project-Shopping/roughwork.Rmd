@@ -62,10 +62,13 @@ ggplot()+
   geom_point(aes(x = Data$time_admin, y = Data$product_related_duration), col = ifelse(Data$purchase, 'red', 'blue' ))
 
 
-
+plotData = Data
+plotData$purchase = ifelse(Data$purchase, 'red', 'blue' )
 ggplot()+
-  geom_point(aes(x = Data$exit_rates, y = Data$page_values), col = ifelse(Data$purchase, 'red', 'blue' ))
-
+  geom_point(aes(x = plotData$exit_rates, y = Data$page_values, colour = plotData$purchase))+ 
+  xlab('Exit Rate')+
+  ylab('Page Value')+
+  scale_color_discrete(name = 'Sale', labels = c('Yes', 'No'))
 
 
 
@@ -93,7 +96,7 @@ ggplot()+
 ggplot()+
   geom_density(aes(x = Data$page_values, col = y))
 ggplot()+
-  geom_bar(aes(x = Data$month, colour = as.factor(y)))
+  geom_bar(aes(x = sqrt(Data$product_related_duration), colour = as.factor(y)))
 ggplot()+
   geom_bar(aes(x = Data$browser, colour = as.factor(y)))
 ggplot()+
