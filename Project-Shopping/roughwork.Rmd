@@ -195,20 +195,19 @@ AUC_eval(glm(formula = purchase ~ product_related_duration + exit_rates + page_v
  
 ```{r}
 gm0  = glm(formula = purchase ~ product_related_duration + exit_rates + page_values + month - 1 + n_admin + n_info*time_info+ bounce_rates +I(product_related_duration^2), family = binomial, data = Data)
+
 Data %>%
-mutate(res=resid(gm0),operating_systems=as.numeric(operating_systems), month = as.numeric(month), browser=as.numeric(browser), region = as.numeric(region),  visitor_type = as.numeric(visitor_type),
+mutate(res=resid(model7),operating_systems=as.numeric(operating_systems), month = as.numeric(month), browser=as.numeric(browser), region = as.numeric(region),  visitor_type = as.numeric(visitor_type), month = as.numeric(as.factor(month)),
 traffic_type = as.numeric(traffic_type))%>%
 pivot_longer(-res)%>% ggplot(aes(y=res,x=value)) +
 facet_wrap(~ name, scales = "free") + geom_point() + geom_smooth()
-
-
 ```
 
 
 
 ```{r}
 errorsdata = Data
-errorsdata[,18] = residuals(gm0)
+errorsdata[,18] = residuals(model7)
 colnames(errorsdata)[18] = 'res'
 
 for(i in 1:ncol(Data)){
