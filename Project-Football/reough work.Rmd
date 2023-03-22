@@ -1,23 +1,11 @@
 ---
-title: "rough work"
+title: "rough werk"
 output: html_document
-date: "2023-03-08"
+date: "2023-03-22"
 ---
 
-```{r setup}
-load("./Project-Shopping/2_online_shopping.RData")
-str(Data)
-library(MASS)
-library(car)
-library(pROC)
-Data$OperatingSystems = as.factor(Data$OperatingSystems)
-Data$Browser = as.factor(Data$Browser)
-Data$Region = as.factor(Data$Region)
-Data$TrafficType = as.factor(Data$TrafficType)
-colnames(Data) = c(colnames(Data)[1:17],'purchase')
-y =  Data$purchase
-plot(y)
-
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## R Markdown
@@ -27,7 +15,16 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r cars}
-summary(cars)
+Goals_18 = read_csv("Project-Football/season-1819.csv")
+Goals_19 <- read_csv("Project-Football/2019-20.csv")
+Goals_20 = read_csv("Project-Football/2020-2021.csv")
+Goals_21 = read_csv("Project-Football/2021-2022.csv")
+##
+goals18 = Goals_18[,1:6]
+goals19 = Goals_19[,2:7]
+goals20 = Goals_20[,2:7]
+goals21 = Goals_21[,2:7]
+
 ```
 
 ## Including Plots
@@ -35,7 +32,7 @@ summary(cars)
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
