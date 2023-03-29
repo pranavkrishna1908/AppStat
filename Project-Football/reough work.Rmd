@@ -14,25 +14,105 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-Goals_18 = read_csv("Project-Football/season-1819.csv")
-Goals_19 <- read_csv("Project-Football/2019-20.csv")
-Goals_20 = read_csv("Project-Football/2020-2021.csv")
-Goals_21 = read_csv("Project-Football/2021-2022.csv")
+```{r data_input}
+library(readr)
+library(tidyverse)
+Goals_18 = read_csv("season-1819.csv")
+Goals_19 <- read_csv("2019-20.csv")
+Goals_20 = read_csv("2020-2021.csv")
+Goals_21 = read_csv("2021-2022.csv")
 ##
-goals18 = Goals_18[,1:6]
-goals19 = Goals_19[,2:7]
-goals20 = Goals_20[,2:7]
-goals21 = Goals_21[,2:7]
-
+goals18 = Goals_18[,2:6]
+goals18$covid = 'Before'
+goals19 = Goals_19[,c(2,4:7)]
+goals19$covid = 'Before'
+goals20 = Goals_20[,c(2,4:7)]
+goals20$covid = 'In'
+goals21 = Goals_21[,c(2,4:7)]
+goals21$covid = 'Later'
 ```
 
 ## Including Plots
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-
+For 2018 only -
+```{r making1model, echo=FALSE}
+helper = goals18
+#helper = helper[,2:6]
+helper2 = pivot_longer(helper, cols = c('FTHG', 'FTAG'))
+helper2$name = as.factor(ifelse(helper2$name == 'FTHG', 1,0))
+helper2$HomeTeam = as.factor(helper2$HomeTeam)
+helper2$AwayTeam = as.factor(helper2$AwayTeam)
+helper2$covid = as.factor(helper2$covid)
+glm(value ~ HomeTeam + AwayTeam + name -1, data = helper2, family = 'poisson')
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+```{r datacomestogether}
+full_data = rbind(goals18, goals19, goals20)
+helper2 = full_data
+#helper = helper[,2:6]
+helper2 = pivot_longer(helper2, cols = c('FTHG', 'FTAG'), names_to = 'Home', values_to = 'Goals')
+helper2$Home = as.factor(ifelse(helper2$Home == 'FTHG', 1,0))
+helper2$HomeTeam = as.factor(helper2$HomeTeam)
+helper2$AwayTeam = as.factor(helper2$AwayTeam)
+helper2$covid = as.factor(helper2$covid)
+```
+
+```{r models}
+no_effect = glm(Goals ~ HomeTeam + AwayTeam + Home + covid -1, data = helper2, family = 'poisson')
+effect = glm(Goals ~ HomeTeam + AwayTeam + Home + covid + Home:covid -1, data = helper2, family = 'poisson')
+anova(no_effect, effect, test = 'LRT')
+```
+#I cannot find the coefficient for Before covid for sme erason, im Not in the contrast paraterisation but still cannot find it
+
+Looking at the model
+```{r}
+sum(fitted(effect)<5)# very bad, 2040 out of 2040, actual is 1996 aout or 2040
+plot(effect)
+```
+##Bad residuals, over dispersion
+try nb
+```{r}
+no_effect_star = glm.nb(Goals ~ HomeTeam + AwayTeam + Home + covid -1, data = helper2 )
+effect_star = glm.nb(Goals ~ HomeTeam + AwayTeam + Home + covid + Home:covid -1, data = helper2)
+anova(no_effect_star, effect_star, test = 'LRT')
+```
+
+
+nah, didnt improve anyything too much, now, before and after covid both
+
+```{r}
+full_data = rbind(goals18, goals19, goals20, goals21)
+helper3 = full_data
+#helper = helper[,2:6]
+helper3 = pivot_longer(helper3, cols = c('FTHG', 'FTAG'), names_to = 'Home', values_to = 'Goals')
+helper3$Home = as.factor(ifelse(helper3$Home == 'FTHG', 1,0))
+helper3$HomeTeam = as.factor(helper3$HomeTeam)
+helper3$AwayTeam = as.factor(helper3$AwayTeam)
+helper3$covid = as.factor(helper3$covid)
+effect_allseasons = glm.nb(Goals ~ HomeTeam + AwayTeam + Home + covid + Home:covid -1, data = helper3)
+plot(predict(effect_allseasons), residuals(effect_allseasons, 'deviance'))
+plot(predict(effect_allseasons), residuals(effect_allseasons, 'pearson'))
+```
+
+##Residual analysis wrt 2019-20, what is the meaning of the break in the curve
+```{r}
+first_index = nrow(goals18)
+last_index = nrow(goals19) + first_index
+relevant_residuals = residuals(effect_allseasons, 'deviance')[first_index:last_index]
+plot(relevant_residuals)
+qqnorm(relevant_residuals)
+```
+
+##This residuals vs cvariates
+```{r}
+plot_data = helper3[,-c(1)]
+
+plot_data %>%
+mutate(res=resid(effect_allseasons), HomeTeam = as.numeric(HomeTeam), AwayTeam = as.numeric(AwayTeam), covid = as.numeric(covid), Home = as.numeric(Home))%>% 
+pivot_longer(-res)%>% ggplot(aes(y=res,x=value)) +
+facet_wrap(~ name, scales = "free") + geom_point() + geom_smooth()
+```
+

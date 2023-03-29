@@ -1,0 +1,66 @@
+---
+title: "Final_Report"
+output: html_document
+date: "2023-03-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r data_input, include=  FALSE}
+library(readr)
+library(tidyverse)
+Goals_18 = read_csv("season-1819.csv")
+Goals_19 <- read_csv("2019-20.csv")
+Goals_20 = read_csv("2020-2021.csv")
+Goals_21 = read_csv("2021-2022.csv")
+##
+goals18 = Goals_18[,2:6]
+goals18$Covid = 'Before'
+goals19 = Goals_19[,c(2,4:7)]
+goals19$Covid = 'Before'
+goals20 = Goals_20[,c(2,4:7)]
+goals20$Covid = 'In'
+goals21 = Goals_21[,c(2,4:7)]
+goals21$Covid = 'Later'
+# Renameing
+allbutlast_data = rbind(goals18, goals19, goals20)
+helper2 = allbutlast_data
+#helper = helper[,2:6]
+helper2 = pivot_longer(helper2, cols = c('FTHG', 'FTAG'), names_to = 'Home', values_to = 'Goals')
+helper2$Home = as.factor(ifelse(helper2$Home == 'FTHG', 1,0))
+helper2$HomeTeam = as.factor(helper2$HomeTeam)
+helper2$AwayTeam = as.factor(helper2$AwayTeam)
+helper2$Covid = as.factor(helper2$Covid)
+temp = colnames(helper2)
+temp[2:3] = c('Attack', 'Defence')
+colnames(helper2) = temp
+```
+
+The Home effect is a widely recognised effect in sports, wherein the team playing at Home is observed to perform better than usually expected. In this report, we will investigate the effect of Covid on this Home advantage effect.
+
+The Data-set is the number of goals scored in each match in the English Premier League from the 2018-19 season to 2021-22 season. For each match, we have information regarding the team which is playing at Home and the team that is playing away. 
+
+We define the 2018-19 and the truncated 2019-90 seasons as pre-covid, the 2020-21 season to be in covid, when the fans were not allowed to be in stadiums and the 2021-2022 season as post-covid.
+
+The first question of interest is if the Home advantage effect persisted through covid, that is even when the fans were not in the stadium. This is supposed to be indicative f the effect of the Home Advantage, whether the fans somehow have an intangible effect on the morale and the psychological state of the team, and consequently, on their performance. 
+
+The second question of interest is to quantify this Home Advantage, and to examine the effect of covid on it. 
+
+```{r cars}
+summary(cars)
+```
+
+## Model
+
+
+
+```{r models_allbutlast}
+no_effect = glm(Goals ~ Attack + Defence + Home + Covid -1, data = helper2, family = 'poisson')
+effect = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = helper2, family = 'poisson')
+plot(effect)
+anova(no_effect, effect, test = 'LRT')
+```
