@@ -45,7 +45,7 @@ all_data$AwayTeam = as.factor(all_data$AwayTeam)
 str(all_data)
 ```
 
-The Home effect is a widely recognised effect in sports, wherein the team playing at Home is observed to perform better than  expected. In this report, we will investigate the effect of Covid on this Home advantage effect. THere are many hypotheses as to why it exists. Some are related to the venue, which includes location, weather or a sense of familiarity. Otherhypothese include special rules which apply to the home team or even the presence of fans, which can have an effect on the player's performance.
+The Home effect is a widely recognised effect in sports, wherein the team playing at Home is observed to perform better than  expected. In this report, we will investigate the effect of Covid on this Home advantage effect. There are many hypotheses as to why it exists. Some are related to the venue, which includes location, weather or a sense of familiarity. Other Hypotheses include special rules which apply to the home team or even the presence of fans, which can have an effect on the player's performance.
 
 The Data-set is the number of goals scored in each match in the English Premier League from the 2018-19 season to 2021-22 season. For each match, we have information regarding the team which is playing at Home and the team that is playing away. 
 
@@ -119,7 +119,7 @@ ln(\mu_{(i,j)}) =
 \alpha_i - \beta_j + C_{\text{Home}} \cdot \mathbf{1}_{\text{Home}} + C_{\text{Covid}} \cdot \mathbf{1}_{\text{Covid}}+ D_{\text{Home } \star \text{ Covid}}
 $$
 
-where $\alpha_i$ denotes the 'Attack' capability of Team $i$ and $\beta_j$ denotes the 'Defence" capability of Team $j$'
+where $\alpha_i$ denotes the 'Attack' capability of Team $i$ and $\beta_j$ denotes the 'Defence" capability of Team $j$' and the indicator for Home is 1 if theam $i$ is at home and 0 otherwise. 
 
 ```{r models_all, include = FALSE}
 no_effect = glm(Goals ~ Attack + Defence + Home + Covid -1, data = helper2, family = 'poisson')
@@ -141,7 +141,8 @@ We see selected coefficients from the model in Table 1.
 <!-- html table generated in R 4.2.1 by xtable 1.8-4 package -->
 <!-- Fri Mar 31 13:50:02 2023 -->
 <table border=1>
-<caption style="font-weight: bold">Table 1 : Selected Coefficients</caption>
+<caption style="font-weight: bold">Table 1: Some  Coefficients</caption>
+
   <tr> <td align="right"> Term </td> <td align="right"> Mean </td> <td align="right"> SD </td> </tr>
   <tr> <td align="right"> Home1 </td> <td align="right"> 0.19 </td> <td align="right"> 0.05 </td> </tr>
   <tr> <td align="right"> CovidIn </td> <td align="right"> 0.06 </td> <td align="right"> 0.06 </td> </tr>
@@ -150,20 +151,18 @@ We see selected coefficients from the model in Table 1.
   <tr> <td align="right"> Home1:CovidLater </td> <td align="right"> -0.05 </td> <td align="right"> 0.08 </td> </tr>
    </table>
 
-We see that the effect of the Home advantage had nearly disappeared in Covid, and continues to be slightly depressed after covid. Thus, we can definitively say that the Home advantage had disappeared in Covid and it still has not completely recovered. 
+We see that the effect of the Home advantage had  disappeared in Covid, and continues to be slightly depressed after covid. This sugests that the presence of Fans is strongly related to the Home Advantage Effect.
 
-We also conclude that during Covid, the teams were making $e^{0.06} - 1 \approx 6$% more goals on average than before Covid, regardless of venue. After Covid, we do not see a significant change in the average number of goals scored by the teams playing away from Home, while the fact that the Home Advantage recovered shows that for a team playing at Home after Covid, they made $16$% more goals compared to playing Away before Covid.
+We also conclude that during Covid, the teams were making 6% more goals on average than before Covid, regardless of venue as $e^{0.06} - 1 \approx 0.06$. Similarly, after Covid, we do not see a significant change in the average number of goals scored by the teams playing away from Home, while the fact that the Home Advantage recovered shows that for a team playing at Home after Covid, they made 16% more goals compared to playing Away before Covid as $e^{0.19 - 0.05 + 0.01} - 1 \approx 0.16$.
 
+## Diagnostics
 
-
-##Diagnostics
-
-We see from Figure 1 the data contains too many small values, i.e. values less than 3, and thus the conclusions from Likelihood theory may be suspect. Thus, we asses the suitability of the model by using a bootstrap test.  
+We see from Figure 1 the data contains too many small values, i.e. values less than 3, and thus the conclusions from Likelihood theory may be suspect. For the same reason, we do not expect the residuals to be informative and we asses the suitability of the model by using a bootstrap test.  
 
 First, we sample parameters from their respective confidence intervals and then use them to make predictions regarding the number of Goals. Next, we fit the model and compare the residual deviance of the model fitted to the bootstrap data and the residual deviance of the model fitted to the actual data.
 
-We observe that the p-value is quite large(0.71) and thus, we can say confidently that the model is able to adequately capture the underlying patterns in the data and the inference that Covid reduced the Home advantage in valid. 
-```{r, echo = TRUE, warning=FALSE}
+We observe that the p-value is quite large(0.71) and thus, we can say confidently that the model is able to adequately capture the underlying patterns in the data and the inference that Covid reduced the Home advantage in valid. This is in spite of our assumption that the scores in each match are independent realisations of Poisson Random Variables.
+```{r, echo = FALSE, warning=FALSE, include = FALSE}
 library(MASS)
 library(car)
 set.seed(0)
@@ -190,7 +189,7 @@ sum(Boot_stat>Boot_threshold)/N
 
 
 
-##Appendix
+## Appendix
 All coefficients of the model 
 <!-- html table generated in R 4.2.1 by xtable 1.8-4 package -->
 <!-- Fri Mar 31 13:50:02 2023 -->

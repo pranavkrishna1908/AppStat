@@ -366,9 +366,9 @@ display: none;
 <p>The Home effect is a widely recognised effect in sports, wherein the
 team playing at Home is observed to perform better than expected. In
 this report, we will investigate the effect of Covid on this Home
-advantage effect. THere are many hypotheses as to why it exists. Some
+advantage effect. There are many hypotheses as to why it exists. Some
 are related to the venue, which includes location, weather or a sense of
-familiarity. Otherhypothese include special rules which apply to the
+familiarity. Other Hypotheses include special rules which apply to the
 home team or even the presence of fans, which can have an effect on the
 player’s performance.</p>
 <p>The Data-set is the number of goals scored in each match in the
@@ -439,7 +439,9 @@ C_{\text{Covid}} \cdot \mathbf{1}_{\text{Covid}}+ D_{\text{Home } \star
 <p>where <span class="math inline">\(\alpha_i\)</span> denotes the
 ‘Attack’ capability of Team <span class="math inline">\(i\)</span> and
 <span class="math inline">\(\beta_j\)</span> denotes the ‘Defence”
-capability of Team <span class="math inline">\(j\)</span>’</p>
+capability of Team <span class="math inline">\(j\)</span>’ and the
+indicator for Home is 1 if theam <span class="math inline">\(i\)</span>
+is at home and 0 otherwise.</p>
 <p>Now, the smaller model is equivalent to the case when the
 coefficients for the interaction terms are all zero.</p>
 </div>
@@ -453,7 +455,7 @@ that the interaction is significant at the 90 % confidence level.</p>
 <!-- Fri Mar 31 13:50:02 2023 -->
 <table border="1">
 <caption style="font-weight: bold">
-Table 1 : Selected Coefficients
+Table 1: Some Coefficients
 </caption>
 <tr>
 <td align="right">
@@ -522,35 +524,41 @@ Home1:CovidLater
 </td>
 </tr>
 </table>
-<p>We see that the efect of the Home advantage had nearly disappeared in
-Covid, and continues to be slightly depressed after covid. Thus, we can
-definitively say that the Home advantage had disappeared in Covid and it
-still has not completely recovered.</p>
-<p>We also conclude that during Covid, the teams were making <span class="math inline">\(e^{0.06} - 1 \approx 6\)</span>% more goals on
-average and after Covid. After COvid, we do not see a significant change
-in the average number of goals scored by the teams playing away from
-Home, while the fact that the Home Advantage recovered shows that for a
-team playing at Home after Covid, they made <span class="math inline">\(16\)</span>% more goals compared to playing Away
-before Covid.</p>
+<p>We see that the effect of the Home advantage had disappeared in
+Covid, and continues to be slightly depressed after covid. This sugests
+that the presence of Fans is strongly related to the Home Advantage
+Effect.</p>
+<p>We also conclude that during Covid, the teams were making 6% more
+goals on average than before Covid, regardless of venue as <span class="math inline">\(e^{0.06} - 1 \approx 0.06\)</span>. Similarly,
+after Covid, we do not see a significant change in the average number of
+goals scored by the teams playing away from Home, while the fact that
+the Home Advantage recovered shows that for a team playing at Home after
+Covid, they made 16% more goals compared to playing Away before Covid as
+<span class="math inline">\(e^{0.19 - 0.05 + 0.01} - 1 \approx
+0.16\)</span>.</p>
 </div>
-<div id="efefct" class="section level2">
-<h2>efefct</h2>
-<p>We see from the coefficient of the interaction term that the home
-effect nearly vanished due to covid and has only partally recovered
-after Covid.</p>
-<p>#Diagnostics We see that the data contains too many small values and
-LIkelihoood theory might not apply. THus, we asses the suitability of
-the model by using a boot sstrap test.</p>
-<p>First, we sample paramters from their respective confidence intervals
-and then use them to make predictions regarding the umber of Goals. Now,
-we fit the model and compare the residual devance of the model fitted to
-the bootstrap data and the residual deviance of the model fitted to the
-actual data.</p>
-<p>We osberve that the p-value is suitably large(0.71) and thus, we can say
+<div id="diagnostics" class="section level2">
+<h2>Diagnostics</h2>
+<p>We see from Figure 1 the data contains too many small values,
+i.e. values less than 3, and thus the conclusions from Likelihood theory
+may be suspect. For the same reason, we do not expect the residuals to
+be informative and we asses the suitability of the model by using a
+bootstrap test.</p>
+<p>First, we sample parameters from their respective confidence
+intervals and then use them to make predictions regarding the number of
+Goals. Next, we fit the model and compare the residual deviance of the
+model fitted to the bootstrap data and the residual deviance of the
+model fitted to the actual data.</p>
+<p>We observe that the p-value is quite large(0.71) and thus, we can say
 confidently that the model is able to adequately capture the underlying
 patterns in the data and the inference that Covid reduced the Home
-advantage in valid.</p>
-##Appendix All coefficients of the model
+advantage in valid. This is in spite of our assumption that the scores
+in each match are independent realisations of Poisson Random
+Variables.</p>
+</div>
+<div id="appendix" class="section level2">
+<h2>Appendix</h2>
+All coefficients of the model
 <!-- html table generated in R 4.2.1 by xtable 1.8-4 package -->
 <!-- Fri Mar 31 13:50:02 2023 -->
 <table border="1">
