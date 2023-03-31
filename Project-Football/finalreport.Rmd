@@ -84,7 +84,7 @@ first_plot
 
 In Figure 1, we see that most matches end up with at least one goal by each team and the number of matches where we have more than 3 goals for both the teams is very less. Also, we remark that even though the figure looks symmetric about the diagonal, in principle, there is no reason why it has to be so. We have plotted each match once, and there is no reason to expect that there is another match wherein the scores of the teams are reversed.
 
-```{r plot2, echo=FALSE}
+```{r plot2, echo=FALSE, warning=FALSE}
 ggplot(helper2) +
   geom_histogram(aes(x = Goals, fill = Home), position = 'dodge') +
   xlab('Goals Scored') +
@@ -162,8 +162,10 @@ We see from Figure 1 the data contains too many small values, i.e. values less t
 
 First, we sample parameters from their respective confidence intervals and then use them to make predictions regarding the number of Goals. Next, we fit the model and compare the residual deviance of the model fitted to the bootstrap data and the residual deviance of the model fitted to the actual data.
 
-We observe that the p-value is quite large and thus, we can say confidently that the model is able to adequately capture the underlying patterns in the data and the inference that Covid reduced the Home advantage in valid. 
-```{r}
+We observe that the p-value is quite large(0.71) and thus, we can say confidently that the model is able to adequately capture the underlying patterns in the data and the inference that Covid reduced the Home advantage in valid. 
+```{r, echo = TRUE, warning=FALSE}
+library(MASS)
+library(car)
 set.seed(0)
 CI_table = confint(effect)
 CI_table = as.data.frame(CI_table)
@@ -175,11 +177,11 @@ temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = diag(CI_table[,3]**2))
 
 Boot_threshold = effect$deviance/2744  #it is res deg of freedom
 Boot_stat = rep(0, N)
-temp_data = helper3
+temp_data = helper2
 X_matrix = model.matrix(effect)
 for(i in 1:N){
   temp_data$Goals = rpois(nrow(temp_data), exp(X_matrix %*% temp_params[i,]))
-  effect_allseasons_boot = glm(Goals ~ Scorer + Defender + Home + covid + Home:covid -1, data = temp_data, family = 'poisson')
+  effect_allseasons_boot = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = temp_data, family = 'poisson')
  Boot_stat[i] = effect_allseasons_boot$deviance/2744 #it is res deg of freedom
   }
 sum(Boot_stat>Boot_threshold)/N
