@@ -17,6 +17,9 @@ When you click the **Knit** button a document will be generated that includes bo
 ```{r data_input}
 library(readr)
 library(tidyverse)
+library(car)
+library(MASS)
+library(matlib)
 Goals_18 = read_csv("season-1819.csv")
 Goals_19 <- read_csv("2019-20.csv")
 Goals_20 = read_csv("2020-2021.csv")
@@ -40,10 +43,10 @@ helper = goals18
 #helper = helper[,2:6]
 helper2 = pivot_longer(helper, cols = c('FTHG', 'FTAG'))
 helper2$name = as.factor(ifelse(helper2$name == 'FTHG', 1,0))
-helper2$HomeTeam = as.factor(helper2$HomeTeam)
-helper2$AwayTeam = as.factor(helper2$AwayTeam)
+helper2$Scorer = as.factor(helper2$Scorer)
+helper2$Defender = as.factor(helper2$Defender)
 helper2$covid = as.factor(helper2$covid)
-glm(value ~ HomeTeam + AwayTeam + name -1, data = helper2, family = 'poisson')
+glm(value ~ Scorer + Defender + name -1, data = helper2, family = 'poisson')
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
@@ -55,14 +58,16 @@ helper2 = full_data
 #helper = helper[,2:6]
 helper2 = pivot_longer(helper2, cols = c('FTHG', 'FTAG'), names_to = 'Home', values_to = 'Goals')
 helper2$Home = as.factor(ifelse(helper2$Home == 'FTHG', 1,0))
-helper2$HomeTeam = as.factor(helper2$HomeTeam)
-helper2$AwayTeam = as.factor(helper2$AwayTeam)
+helper2$Scorer = as.factor(helper2$Scorer)
+helper2$Defender = as.factor(helper2$Defender)
 helper2$covid = as.factor(helper2$covid)
+helper2[seq(from = 2, to = nrow(helper2), by = 2),c(2,3)] = helper2[seq(from = 2, to = nrow(helper2), by = 2),c(3,2)]
+
 ```
 
 ```{r models}
-no_effect = glm(Goals ~ HomeTeam + AwayTeam + Home + covid -1, data = helper2, family = 'poisson')
-effect = glm(Goals ~ HomeTeam + AwayTeam + Home + covid + Home:covid -1, data = helper2, family = 'poisson')
+no_effect = glm(Goals ~ Scorer + Defender + Home + covid -1, data = helper2, family = 'poisson')
+effect = glm(Goals ~ Scorer + Defender + Home + covid + Home:covid -1, data = helper2, family = 'poisson')
 anova(no_effect, effect, test = 'LRT')
 ```
 #I cannot find the coefficient for Before covid for sme erason, im Not in the contrast paraterisation but still cannot find it
@@ -75,8 +80,8 @@ plot(effect)
 ##Bad residuals, over dispersion
 try nb
 ```{r}
-no_effect_star = glm.nb(Goals ~ HomeTeam + AwayTeam + Home + covid -1, data = helper2 )
-effect_star = glm.nb(Goals ~ HomeTeam + AwayTeam + Home + covid + Home:covid -1, data = helper2)
+no_effect_star = glm.nb(Goals ~ Scorer + Defender + Home + covid -1, data = helper2 )
+effect_star = glm.nb(Goals ~ Scorer + Defender + Home + covid + Home:covid -1, data = helper2)
 anova(no_effect_star, effect_star, test = 'LRT')
 ```
 
@@ -86,18 +91,25 @@ nah, didnt improve anyything too much, now, before and after covid both
 ```{r}
 full_data = rbind(goals18, goals19, goals20, goals21)
 helper3 = full_data
+initial_names = colnames(full_data)
+initial_names[2:3] = c('Scorer', 'Defender')
+colnames(helper3) = initial_names
 #helper = helper[,2:6]
 helper3 = pivot_longer(helper3, cols = c('FTHG', 'FTAG'), names_to = 'Home', values_to = 'Goals')
 helper3$Home = as.factor(ifelse(helper3$Home == 'FTHG', 1,0))
-helper3$HomeTeam = as.factor(helper3$HomeTeam)
-helper3$AwayTeam = as.factor(helper3$AwayTeam)
+helper3$Scorer = as.factor(helper3$Scorer)
+helper3$Defender = as.factor(helper3$Defender)
+helper3[seq(from = 2, to = nrow(helper3), by = 2),c(2,3)] = helper3[seq(from = 2, to = nrow(helper3), by = 2),c(3,2)]
 helper3$covid = as.factor(helper3$covid)
-effect_allseasons = glm.nb(Goals ~ HomeTeam + AwayTeam + Home + covid + Home:covid -1, data = helper3)
+noeffect_allseasons = glm(Goals ~ Scorer + Defender + Home + covid -1, data = helper3, family = 'poisson')
+effect_allseasons = glm(Goals ~ Scorer + Defender + Home + covid + Home:covid -1, data = helper3, family = 'poisson')
+Anova(effect_allseasons, type =2, test = 'LR')
+anova(noeffect_allseasons, effect_allseasons, type = 'LR')
 plot(predict(effect_allseasons), residuals(effect_allseasons, 'deviance'))
 plot(predict(effect_allseasons), residuals(effect_allseasons, 'pearson'))
 ```
 
-##Residual analysis wrt 2019-20, what is the meaning of the break in the curve
+##Residual analysis wrt 2019-20
 ```{r}
 first_index = nrow(goals18)
 last_index = nrow(goals19) + first_index
@@ -111,8 +123,52 @@ qqnorm(relevant_residuals)
 plot_data = helper3[,-c(1)]
 
 plot_data %>%
-mutate(res=resid(effect_allseasons), HomeTeam = as.numeric(HomeTeam), AwayTeam = as.numeric(AwayTeam), covid = as.numeric(covid), Home = as.numeric(Home))%>% 
+mutate(res=resid(effect_allseasons), Scorer = as.numeric(Scorer), Defender = as.numeric(Defender), covid = as.numeric(covid), Home = as.numeric(Home))%>% 
 pivot_longer(-res)%>% ggplot(aes(y=res,x=value)) +
 facet_wrap(~ name, scales = "free") + geom_point() + geom_smooth()
 ```
+
+```{r}
+library(car)
+Anova(effect_allseasons, test = 'LR', type = 2)
+#We see that the onteraction is significant
+#Home is significant as expected
+```
+NOw, bootstrap
+#get the coefficients ?
+```{r}
+CI_table = confint(effect_allseasons)
+CItable = as.data.frame(CI_table)
+CI_table[,3] = 0.5*(CI_table[,2] - CI_table[,1])
+N = 1000
+temp_params = mvrnorm(n = N, mu = CI_table$Mean, Sigma = inv(vcov(effect_allseasons)))#temptemp$cov.scaled for temptemp = summary(effectallseasons)
+temp_params = mvrnorm(n = N, mu = CI_table$Mean, Sigma = diag(CI_table[,3]**2))
+
+Boot_threshold = effect_allseasons$deviance/2744  #it is res deg of freedom
+Boot_stat = rep(0, N)
+temp_data = helper3
+X_matrix = model.matrix(effect_allseasons)
+for(i in 1:N){
+  temp_data$Goals = rpois(nrow(temp_data), exp(X_matrix %*% temp_params[i,]))
+  effect_allseasons_boot = glm(Goals ~ Scorer + Defender + Home + covid + Home:covid -1, data = temp_data, family = 'poisson')
+ Boot_stat[i] = effect_allseasons_boot$deviance/2744 #it is res deg of freedom
+  }
+sum(Boot_stat>Boot_threshold)/N
+```
+
+
+#Get data
+```{r}
+N = 100
+Boot_stat = rep(0, N)
+temp_data = helper3
+sim_data = simulate(effect_allseasons, nsim = N)
+for(i in 1:N){
+  temp_data$Goals = sim_data[,i]
+  effect_allseasons_boot = glm(Goals ~ Scorer + Defender + Home + covid + Home:covid -1, data = temp_data, family = 'poisson')
+Boot_stat[i] = effect_allseasons_boot$deviance/2744 #it is res deg of freedom
+}
+sum(Boot_stat<Boot_threshold)/N
+```
+
 

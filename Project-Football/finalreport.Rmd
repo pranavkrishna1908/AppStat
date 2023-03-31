@@ -27,8 +27,8 @@ goals20$Covid = 'In'
 goals21 = Goals_21[,c(2,4:7)]
 goals21$Covid = 'Later'
 # Renameing
-allbutlast_data = rbind(goals18, goals19, goals20)
-helper2 = allbutlast_data
+all_data = rbind(goals18, goals19, goals20, goals21)
+helper2 = all_data
 #helper = helper[,2:6]
 helper2 = pivot_longer(helper2, cols = c('FTHG', 'FTAG'), names_to = 'Home', values_to = 'Goals')
 helper2$Home = as.factor(ifelse(helper2$Home == 'FTHG', 1,0))
@@ -38,6 +38,11 @@ helper2$Covid = as.factor(helper2$Covid)
 temp = colnames(helper2)
 temp[2:3] = c('Attack', 'Defence')
 colnames(helper2) = temp
+#We re order the teams so as to make sure the model supplied to R corresponds to the model we want
+helper2[seq(from = 2, to = nrow(helper2), by = 2),c(2,3)] = helper2[seq(from = 2, to = nrow(helper2), by = 2),c(3,2)]
+all_data$HomeTeam = as.factor(all_data$HomeTeam)
+all_data$AwayTeam = as.factor(all_data$AwayTeam)
+str(all_data)
 ```
 
 The Home effect is a widely recognised effect in sports, wherein the team playing at Home is observed to perform better than usually expected. In this report, we will investigate the effect of Covid on this Home advantage effect.
@@ -46,17 +51,59 @@ The Data-set is the number of goals scored in each match in the English Premier 
 
 We define the 2018-19 and the truncated 2019-90 seasons as pre-covid, the 2020-21 season to be in covid, when the fans were not allowed to be in stadiums and the 2021-2022 season as post-covid.
 
+## Exploration of the Data
+```{r plot1, echo=FALSE}
+library(ggplot2)
+
+first_plot <- ggplot(data = all_data) +
+  geom_count(aes(x = FTHG, y = FTAG)) +
+  xlab('Goals Scored by the Home Team') +
+  ylab('Goals Scored by the Away Team') +
+  labs(title = 'Figure 1: Goals Scored at Home and Away',
+       caption = 'Points represent Goals in each match and their Size denotes the Frequency of that score in the 4 seasons') +
+  scale_x_continuous(breaks = seq(0, 10, 1)) +
+  scale_y_continuous(breaks = seq(0, 10, 1))+
+    scale_size(name = "Frequency")
+# 
+# lol_plot <- ggplot(data = all_data) +
+#   geom_point(aes(x = FTAG, y = FTHG)) +
+#   xlab('Goals Scored by the Home Team') +
+#   ylab('Goals Scored by the Away Team') +
+#   labs(title = 'Figure lol: Goals Scored at Home and Away',
+#        caption = 'Points represent Goals in each match and their Size denotes the Frequency of that score in  \n the 4 seasons') +
+#   scale_x_continuous(breaks = seq(0, 10, 1)) +
+#   scale_y_continuous(breaks = seq(0, 10, 1))
+
+#ggMarginal(p = lol_plot, type = 'histogram', margins = 'both', size = 5)
+
+
+#ggMarginal(p = first_plot, type = 'histogram', margins = 'both', size = 5)
+first_plot
+
+```
+
+In Figure 1, we see that most matches end up with at least one goal by each team and the number of matches where we have more than 3 goals for both the teams is very less. Also, we remark that even though the figure looks symmetric about the diagonal, in principle, there is no reason why it has to be so. We have plotted each match once, and there is no reason to expect that there is another match wherein the scores of the teams are reversed.
+
+```{r}
+ggplot(helper2) +
+  geom_histogram(aes(x = Goals, fill = Home), position = 'dodge') +
+  xlab('Goals Scored') +
+  ylab('Frequency') +
+  labs(title = 'Figure 2: Histogram of goals Scored at Home and Away',
+       caption = 'Each Bar represents the number of times a team playing at home or away scored a number of goals',
+       fill = 'Location') +  # Set the new legend title
+  scale_x_continuous(breaks = seq(0, 18, 1)) +
+  scale_fill_discrete(labels = c('Away', 'Home'))
+```
+
+From Figure 2, we see that in aggregate, the Teams at home make more goals than the teams playing away, as shown by the excess height of the Blue bar compared to the Red one for all non-zero number of goals. Thus, we see a strong hint that the Home Advantage effect definitely exists. 
+
+
+
 The first question of interest is if the Home advantage effect persisted through covid, that is even when the fans were not in the stadium. This is supposed to be indicative f the effect of the Home Advantage, whether the fans somehow have an intangible effect on the morale and the psychological state of the team, and consequently, on their performance. 
 
 The second question of interest is to quantify this Home Advantage, and to examine the effect of covid on it. 
-
-```{r cars}
-summary(cars)
-```
-
 ## Model
-
-
 
 ```{r models_allbutlast}
 no_effect = glm(Goals ~ Attack + Defence + Home + Covid -1, data = helper2, family = 'poisson')
@@ -64,3 +111,15 @@ effect = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = hel
 plot(effect)
 anova(no_effect, effect, test = 'LRT')
 ```
+We see from the test that the effect of covid on the home advantage effect is statistically significant at a 0.1 level of significance.
+
+## efefct
+
+We see from the coefficient of the interaction term that the home effect nearly vanished due to covid and has only partally recovered after Covid. 
+
+#Diagnostics
+We see that the data contains too many small values and LIkelihoood theory might not apply. THus, we asses the suitability of the model by using a boot sstrap test.  
+
+First, we sample paramters from their respective confidence intervals and then use them to make predictions regarding the umber of Goals. Now, we fit the model and compare the residual devance of the model fitted to the bootstrap data and the residual deviance of the model fitted to the actual data.
+
+We osberve that teh p-value is suitably large and thus, we can say confidently that the model is able to adequately capture the underlying patterns in the data and the inference that Covid reduced the Home advantage in valid. 
