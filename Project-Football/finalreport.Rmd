@@ -171,8 +171,8 @@ CI_table = as.data.frame(CI_table)
 CI_table[,3] = 0.5*(CI_table[,2] - CI_table[,1])
 CI_table[,4] = 0.5*(CI_table[,2] + CI_table[,1])
 N = 1000
-#temp_params = mvrnorm(n = N, mu = CI_table$Mean, Sigma = inv(vcov(effect_allseasons)))#temptemp$cov.scaled for temptemp = summary(effectallseasons)
 temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = diag(CI_table[,3]**2))
+#temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = vcov(effect))#temptemp$cov.scaled for temptemp = summary(effectallseasons)
 
 Boot_threshold = effect$deviance/2744  #it is res deg of freedom
 Boot_stat = rep(0, N)
@@ -187,6 +187,16 @@ sum(Boot_stat>Boot_threshold)/N
 ```
 
 
+```{r, include=FALSE}
+#Lastly, we try to check if this covid adjustment of the Home Advantage effect is due to the performance of a few teams or if it a general effect. 
+teams = Reduce(intersect, list(unique(goals18$HomeTeam), unique(goals19$HomeTeam), unique(goals20$HomeTeam), unique(goals21$HomeTeam)))
+subset = helper2[helper2$Attack %in% teams, ]
+subset = subset[subset$Defence %in% teams, ]
+subset_noeffect = glm(Goals ~ Attack + Defence + Home + Covid  -1, data = subset, family = 'poisson')
+subset_effect  = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = subset, family = 'poisson')
+
+
+```
 
 
 ## Appendix
