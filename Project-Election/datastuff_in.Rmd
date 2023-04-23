@@ -155,6 +155,325 @@ ggplot(data = tempdata, aes(x = year, y = residuals(linear_model), color = group
 ```
 Questions 
 
+
+## Bootstrap for the state variables
+
+```{r include=FALSE}
+#for s1
+mixed_model1a = lmer(Dvote~. -evotes  - year -Region -s7 -s1  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model1a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+if(i %% 10 ==0) print(i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -s1  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval_1 = mean(lrstats > lrstat)
+#for s2
+mixed_model2a = lmer(Dvote~. -evotes  - year -Region -s7 -s2  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model2a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -s2  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval2 = mean(lrstats > lrstat)
+#for s3
+mixed_model3a = lmer(Dvote~. -evotes  - year -Region -s7 -s3  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model3a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -s3  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval3 = mean(lrstats > lrstat)
+###
+#for s4
+mixed_model4a = lmer(Dvote~. -evotes  - year -Region -s7 -s4  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model4a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -s4  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval4 = mean(lrstats > lrstat)
+###
+#for s5
+mixed_model5a = lmer(Dvote~. -evotes  - year -Region -s7 -s5  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model5a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -s5  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval5 = mean(lrstats > lrstat)
+###
+#for s6
+mixed_model6a = lmer(Dvote~. -evotes  - year -Region -s7 -s6  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model6a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -s6  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval6 = mean(lrstats > lrstat)
+###
+#for s8
+mixed_model8a = lmer(Dvote~. -evotes  - year -Region -s8 -s3  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model8a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -s8  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval8 = mean(lrstats > lrstat)
+###
+#for s3
+mixed_model9a = lmer(Dvote~. -evotes  - year -Region -s7 -s9  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model9a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -s9  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval9 = mean(lrstats > lrstat)
+###
+```
+
+
+## Bootstrap for regional 
+```{r include=FALSE}
+#for s1
+mixed_model1a = lmer(Dvote~. -evotes  - year -Region -s7 -r1  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model1a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+if(i %% 10 ==0) print(i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -r1  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval_1 = mean(lrstats > lrstat)
+#for s2
+mixed_model2a = lmer(Dvote~. -evotes  - year -Region -s7 -r2  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model2a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -r2  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval2 = mean(lrstats > lrstat)
+#for s3
+mixed_model3a = lmer(Dvote~. -evotes  - year -Region -s7 -r3  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model3a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -r3  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval3 = mean(lrstats > lrstat)
+###
+#for s4
+mixed_model4a = lmer(Dvote~. -evotes  - year -Region -s7 -r4  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model4a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -r4  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval4 = mean(lrstats > lrstat)
+###
+#for s5
+mixed_model5a = lmer(Dvote~. -evotes  - year -Region -s7 -r5  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model5a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -r5  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval5 = mean(lrstats > lrstat)
+###
+#for s6
+mixed_model6a = lmer(Dvote~. -evotes  - year -Region -s7 -r6  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model6a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -r6  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval6 = mean(lrstats > lrstat)
+```
+## Bootstrap for all regional
+
+```{r}
+mixed_modelaaa = lmer(Dvote~. -evotes  - year -Region -s7 -r4-r5-r6 -r1 - r2 - r3   + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_modelaaa)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~. -evotes  - year -Region -s7 -r4-r5-r6 -r1 - r2 - r3  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pvalaaa = mean(lrstats > lrstat)
+```
+## Bootstrap for all regional and state
+
+```{r}
+mixed_modelwow = lmer(Dvote~state + n1 + n2 + n3 + n4  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_modelwow)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=newDat,REML=F)
+bnull =  lmer(Dvote~state + n1 + n2 + n3 + n4  + (1|year) + (1|year:Region) , 
+              data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pvalwow = mean(lrstats > lrstat)
+```
+
+
+
+
+TEsting for the randomness dependence structure
+```{r include = FALSE}
+mixed_model_a = lmer(Dvote~. -evotes  - year -Region -s7    + (1|year:Region) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model_a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+if(i %% 10 ==0) print(i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year - Region + (1|year) + (1|year:Region), data=newDat,REML=F)
+bnull = lmer(Dvote~. -evotes  - year -Region -s7    + (1|year:Region) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval_random1 = mean(lrstats > lrstat)
+###
+mixed_model_a = lmer(Dvote~. -evotes  - year -Region -s7    + (1|year) , data=Election_data,REML=F)
+
+lrstat <- as.numeric(2*(logLik(mixed_model)-logLik(mixed_model_a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+if(i %% 10 ==0) print(i)
+newDat <- Election_data
+newDat$Dvote <- unlist(simulate(mixed_model))
+balt <- lmer(Dvote~. -evotes  - year - Region + (1|year) + (1|year:Region), data=newDat,REML=F)
+bnull = lmer(Dvote~. -evotes  - year -Region -s7    + (1|year) , data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+pval_random2 = mean(lrstats > lrstat)
+#cant rejext s1s2s3 but the year randomness can be removed
+```
+
+
+
+
+Questions 
 Isnt there some werd thing because the nationwide variables are per year and we do not put regularisation on them?
 I think it is alright because these are measured and we can choose to have these as inputs in the model
 (Why regularise? (Somehow, there is structural correlation in the data), but I cannt understand why regularisation is a good idea for this. Bayesian stuff, aright)
+
+What happened over here
+ranef(mixed_model)$year
+     (Intercept)
+1948           0
+1952           0
+1956           0
+1960           0
+1964           0
+1968           0
+1972           0
+1976           0
+1980           0
+1984           0
+1988           0
+1992           0
+##crazy idea
+```{r}
+mixed_model_crazy = lmer(1/Dvote~. -evotes  - year -Region -s7   + (1|year:Region) , data=Election_data,REML=T)
+mixed_model_crazy2 = lmer(log(Dvote)~. -evotes  - year -Region -s7   + (1|year:Region) , data=Election_data,REML=T)
+
+```
+These crazy models have zero residuals
+
+The mixedmodelfin has higher AIC but mixedmodel has lower AIC

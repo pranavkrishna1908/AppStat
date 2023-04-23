@@ -17,31 +17,55 @@ The election of the President of the United States of America is a closely watch
 The data is the percentage of the Statewide vote which was for the Democratic candidate from the years 1948 to 1992. This will be our response variable, instead of the nationwide election results.
 
 Among the predictor variables, we have year and state. The other variables we have are as follows - 
+* `year`
 
-##### Nationwide variables n1,...,n4
+* `state`
 
-support for the Democratic candidate in the September poll, presidential approval in the Jully poll × Inc, presidential approval in the Jully poll × Presinc and 2nd quarter GNP growth ×    Inc
+* nationwide variables `n1,...,n4`
 
-##### Statewide variables s1,...,s9 
+    1. support for the Democratic candidate in the September exit poll
 
-Democratic share of state vote in the last election (as a deviation from the corresponding national vote), 
-    Democratic share of state vote two elections ago (again, as a deviation from national), 
-    home state of the presidential candidate, 
-    home state of the vice-presidential candidate,
-    Democratic majority in the state legislature,
-    (state economic growth in the past year) × Inc,
-    measure of the state ideology,
-    ideological compatibility with candidates and 
-    proportion of Catholics in 1960 compared to U.S. average (1960 had a Catholic presidential candidate)
+    2. (presidential approval in the Jully exit poll) $\times$ `Inc`
 
-##### Regional/sub-regional variables r1,...,r6
+    3. (presidential approval in the Jully exit poll) $\times$ `Presinc`
 
-South indicator, 
-(South indicator in 1964) × (-1)
-(deep South indicator in 1964) × (-1)
-New England indicator in 1964
-New England indicator in 1972 and 
-(West in 1976).
+    4. (2nd quarter GDP growth) $\times$ `Inc`
+
+* statewide variables `s1,...,s9`
+
+    1. Democratic vote share in the state in the last election (as deviation from the corresponding national vote)
+    
+    2. Democratic vote share in the state vote two elections ago (again, as a deviation from national)
+    
+    3. home state of the presidential candidate
+    
+    4. home state of the vice-presidential candidate
+    
+    5. Democratic majority in the state legislature
+    
+    6. (state economic growth in the past year) $\times$ `Inc`
+    
+    7. state ideology measurement
+    
+    8. ideological compatibility with candidates for each state
+    
+    9. proportion of Catholics in 1960 compared to U.S. average (1960 had a Catholic presidential candidate)
+    
+* regional/sub-regional variables `r1,...,r6`
+   
+    1. South indicator
+   
+    2. (South indicator in 1964) $\times$ (-1)
+   
+    3. (deep South indicator in 1964) $\times$ (-1)
+   
+    4. New England indicator in 1964
+   
+    5. New England indicator in 1972
+   
+    6. (West in 1976) 
+
+where `Inc` is 1 or -1 depending on whether the incumbent President is a Democrat or Republican, `Presinc` equals `Inc` if the incumbent President is running for a re-election and is 0 otherwise. All variables are positively signed towards Democrats, so e.g. `s3` is 1 for the home state of the Democratic cadidate and -1 for the home state of the Republican candidate. The year 1964 was strange because the Democratic candidate Lyndon B. Johnson was able to completely dominate the elections also in the South, with the exception of the "deep South" states. There are other regional variables to adjust for known and expected outliers instead of removing them.
 
 Lastly, we create another variable called Region which signifies the geographical region for the states. Assuming the states are numbered in alphabetical order, the reions are constructed as follows - 
 
@@ -55,7 +79,7 @@ West: 2 3 5 6 11 12 26 28 31 37 44 47 50.
 
 ## Linear model
 
-The first liear model we investigate is  
+The first linear model we investigate is  
 
 $$
 D_{vote} = C_1 + \mathbf{1}_{\text{Year}} \cdot C_{\text{Year}} + \mathbf{1}_{\text{State}} \cdot C_{\text{State}} + \Sigma_{i = 1}^4 C_{n_i} \cdot n_i + \Sigma_{i = 1}^9 C_{s_i} \cdot s_i + \Sigma_{i = 1}^6 C_{r_i} \cdot r_i 
@@ -102,7 +126,7 @@ tempdata = Election_data
 tempdata$group = paste(tempdata$Region , tempdata$year)
 ggplot(data = tempdata, aes(y = linear_model2$residuals, col =  group)) + 
   geom_boxplot() + 
-  ggtitle("Figure 1: Residuals grouped by Region and Year") + 
+  ggtitle("Figure 1: Residuals grouped by Region and Year for the linear model") + 
   theme(plot.caption = element_text(size = 18))+
   ylab('Residuals')
 ```
@@ -111,11 +135,77 @@ Figure 1 raises serious questions about homoskedasticity in the model, as the le
 
 ## Mixed Effects Model
 
-We observe that the data generating process is such that the observations within each year are correlated. Similarly, residuals suggest that there is correlation within Regions. Thus, we allow a nested effects model. 
+We observe that the data generating process is such that the observations within each year are correlated. Similarly, residuals suggest that there is correlation within Regions for each year. Thus, we allow a nested effects model such that the response is the proportion of Democratic votes. The first level of random effects is the Year grouping and in the dependence structure, we allow a grouping at the Region level.
 
+$$
+Y_{\text{y,r}} = X_{\text{yr}} \beta + Z_{\text{y,r}} b_y + Z_{\text{yr}} b_{\text{yr}} +\epsilon_{\text{yr}}
+$$
+In this model, $Y_{\text{y,r}}$ contains the individual observations for each state, $X_{\text{yr}}$ is the matrix of fixed effects, namely State, the national variables, the state variables and the regional variables. Again, we choose to drop s7, the measure of state ideology, because it is collinear with the state and does not change in time. The $Z_{\text{y,r}}$ indicates the first level of random effects, the Year, and the $Z_{\text{yr}}$ indicates the second level, Regions within the year.
 
-```{r pressure, echo=FALSE}
-mixed_model1 = lmer(Dvote~. -evotes  - year  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+```{r pressure, echo=FALSE, include=FALSE}
+mixed_model = lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+On making a similar grouping of the residuals as figure 1 for this model, we see some improvement in the residuals. All boxplots pass through the zero line, but we still see significant variation in the engths of the boxplots. 
+
+```{r echo = FALSE}
+ggplot(data = tempdata, aes(y = residuals(mixed_model), col =  group)) + 
+  geom_boxplot() + 
+  ggtitle("Figure 2: Residuals grouped by Region and Year for the mixed model") + 
+  theme(plot.caption = element_text(size = 18))+
+  ylab('Residuals')
+```
+
+ We observe that the model fits the data for all regions except the south. This is surprising because we have three regional variables dedicated to capturing this phenomenon. We try to check the effectiveness of the model without some regional variables by running a Bootstrap test.
+```{r include = FALSE}
+ggplot(data = tempdata, aes(y = residuals(mixed_model), x =  group, col = group)) + 
+  geom_point() + 
+  ggtitle("Figure 2: Residuals grouped by Region and Year for the mixed model") + 
+  theme(plot.caption = element_text(size = 18))+
+  ylab('Residuals')
+#ibrary(janitor) tabyl(Election_data[abs(residuals(mixed_model1)) > 0.05, ], Region)
+```
+
+## Variable Importance for the regional variables
+
+We conduct a parametric BootStrap to test the importance of the variables and find out that none of the variables are individually important, as the p values are more than 0.5 for all of them. Next,considering that we were able to adequately model the data for all regions except South, we remove the regional variables that are not related to it. We get a p value of 0.762, whch suggests that we can remove these variables. Next, when we take the bolder step of removing all regional variables and observe that the p value is still above 0.5, meaning that we can drop all the regional variables. 
+
+When we compare the BIC for these model, we see a significant drop for each of the steps and decide to not discard any of the regional variables in the final model. Thus, we stay with the model mentioned in the beginning. Thus, we decide to keep all the regional covariates in the model. This is also because we do not want to degrade the already bad performance of the model for the Southern region.
+
+Next, we tried to simplify the dependence structure by running a bootstrap test for the Random effect of Year. We got a large p value. Furthermore, on investigating the random coefficients for Year, we observed that the coefficients were all the same and the estimated variance is zero. Thus, we decided to drop this level of randomness from the model.
+
+Thus, the final model we choose to have a model which contains only one level of random effects for each region and year. The final mixed model we have is as follows -
+$$
+Y_{\text{y,r}} = X_{\text{yr}} \beta + Z_{\text{yr}} b_{\text{yr}} +\epsilon_{\text{yr}}
+$$
+
+```{r include=FALSE}
+mixed_model_fin = lmer(Dvote~. -evotes  - year -Region -s7   + (1|year:Region) , data=Election_data,REML=T)
+
+```
+
+## Diagnostics for the Mixed model
+
+Recall that for the Mixed model, we expect the 'Random Coefficients' to be Gaussian. We investigate this by making a QQplot and observe that this does indeed hold true. We also checked the model fit by investigating the residuals grouped by region and year. We again mention that the model was able to adequately fit the data, except for the South, where the model made errors in both directions. Lastly, we make the corresponding plot for the final model
+
+```{r echo = FALSE}
+#plot(fitted(mixed_model_fin), resid(mixed_model_fin))
+ggplot(data = tempdata, aes(y = residuals(mixed_model_fin), x =  group, col = group)) + 
+  geom_point() + 
+  ggtitle("Figure 3: Residuals grouped by Region and Year for the Final Mixed Model") + 
+  theme(plot.caption = element_text(size = 18))+
+  ylab('Residuals')
+#qqnorm(ranef(mixed_model_fin)$'year:Region'[,1])
+```
+
+## Comparison of the mixed model and the linear model
+
+We observe in Figure 3 that the residuals are centered at zero, which is definitely an improvement over the linear model, but we do not believe that it is a significant improvement. Recall that an interaction term in the linear model between Year and Region would have a similar effect on the residuals of the linear model. In our opinion, the introduction of the mixed model, even though theoretically more appropriate, does not lead to a significant improvement in the fit of the model. We had intended to remove heteroskedasticity, which still exists in the model. Thus, deffeating the purpose of mixed modelling. 
+
+
+
+
+
+
+
+
