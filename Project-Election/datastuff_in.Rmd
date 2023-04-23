@@ -16,6 +16,7 @@ When you click the **Knit** button a document will be generated that includes bo
 
 ```{r cars}
 library(readr)
+library(lme4)
 library(tidyverse)
 X4_US_elections <- read_table("E:/EPFL/AppStat/AppStat/Data/4_US_elections.txt")
 Election_data = X4_US_elections
@@ -29,9 +30,10 @@ Election_data$Region[which(Election_data$state %in% Midwest)] = 'Midwest'
 Election_data$Region[which(Election_data$state %in% South)] = 'South'
 Election_data$Region[which(Election_data$state %in% Northeast)] = 'Northeast'
 Election_data$constant = NULL
+Election_data = drop_na(Election_data)
+Originaldata = Election_data
 Election_data$state = as.factor(Election_data$state)
 Election_data$year = as.factor(Election_data$year)
-Election_data = drop_na(Election_data)
 ```
 
 ## Including Plots
@@ -39,7 +41,7 @@ Election_data = drop_na(Election_data)
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
-linear_model = lm(Dvote~. - Region, data = Election_data)
+linear_model = lm(Dvote~.-evotes - Region , data = Election_data)
 ungrouped_residuals = linear_model$residuals
 
 ggplot(data = Election_data, aes(y = linear_model$residuals, col =  state)) + 
@@ -67,7 +69,7 @@ ggplot(data = Election_data, aes(y = linear_model$residuals, col =  state)) +
 
 ```
 
-cannot see clear dependence even without the extra variables when I group by state. Let it be. DO the mixed model for full data
+cannot see clear dependence even without the extra variables when I group by state. Let it be. DO the mixed model for full data?
 
 
 Anyway, try year and region because region didnt work, works!! hannes
@@ -75,7 +77,7 @@ Anyway, try year and region because region didnt work, works!! hannes
 ```{r}
 tempdata = Election_data
 tempdata$group = paste(tempdata$Region , tempdata$year)
-ggplot(data = tempdata, aes(y = linear_model$residuals, col =  group)) + 
+ggplot(data = tempdata, aes(y = linear_model2$residuals, col =  group)) + 
   geom_boxplot() + 
   labs(caption = "Figure: Residuals grouped by region and year") + 
   ggtitle("s") + 
@@ -93,7 +95,6 @@ library(lme4)
 mixed_model = lmer(Dvote~. -evotes + (1|state), data=Election_data,REML=F)
 mixed_model = lmer(Dvote~.-evotes + (1|state) + (1|year), data=Election_data,REML=F)
 mixed_model = lmer(Dvote~. -evotes+ (1|state) + (1|year) - state - year, data=Election_data,REML=F)
-
 
 ```
 cant take year as random effect as one column of hard south is a fixed effect, can I?
@@ -117,8 +118,43 @@ So, the residuals are less dependent in that there are less boxplots away from z
 
 This is prefereable as the aic goes down significantly
 ```{r}
-mixed_model1 = lmer(Dvote~. -evotes  - year + (1|year) + (1|year:Region), data=Election_data,REML=F)
-mixed_model1a = lmer(Dvote~. -evotes  - year  + (1|year:Region), data=Election_data,REML=F)
+
+mixed_model1 = lmer(Dvote~. -evotes  - year - Region + (1|year) + (1|year:Region), data=Election_data,REML=F)
+mixed_model1a = lmer(Dvote~. -evotes  - year - Region  + (1|year:Region), data=Election_data,REML=F)
 anova(mixed_model1, mixed_model1a)
+
 ```
 
+
+Bootstrap
+```{r}
+
+lrstat <- as.numeric(2*(logLik(mixed_model1)-logLik(mixed_model1a)))
+lrstats <- rep(0,1000)
+for(i in 1:1000){
+set.seed(517*i)
+if(i %% 10 ==0) print(i)
+newDat <- Election_data
+newDat$size <- unlist(simulate(mixed_model1))
+bnull <- lmer(Dvote~. -evotes  - year - Region + (1|year) + (1|year:Region), data=newDat,REML=F)
+balt = lmer(Dvote~. -evotes  - year - Region  + (1|year:Region), data=newDat,REML=F)
+lrstats[i] <- as.numeric(2*(logLik(balt)-logLik(bnull)))
+}
+mean(lrstats > lrstat)
+
+```
+
+plot curves by year instead of boxplots
+```{r}
+tempdata$year = as.numeric(tempdata$year)
+ggplot(data = tempdata, aes(x = year, y = residuals(linear_model), color = group)) + 
+    geom_point() +
+    geom_smooth() 
+
+
+```
+Questions 
+
+Isnt there some werd thing because the nationwide variables are per year and we do not put regularisation on them?
+I think it is alright because these are measured and we can choose to have these as inputs in the model
+(Why regularise? (Somehow, there is structural correlation in the data), but I cannt understand why regularisation is a good idea for this. Bayesian stuff, aright)

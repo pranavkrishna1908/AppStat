@@ -1,0 +1,121 @@
+---
+title: "Final Report"
+output: html_document
+date: "2023-04-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## US Presidential Elections
+
+The election of the President of the United States of America is a closely watched world event which has significant implications for domestic and international affairs not just in America, but all over the world. In the past, linear models with some specially constructed variables were used to predict the results at the state level. In this report, we will investigate this practice by first making a linear model, and then a mixed model and compare their fit and predictions.
+
+## Description of the data
+
+The data is the percentage of the Statewide vote which was for the Democratic candidate from the years 1948 to 1992. This will be our response variable, instead of the nationwide election results.
+
+Among the predictor variables, we have year and state. The other variables we have are as follows - 
+
+##### Nationwide variables n1,...,n4
+
+support for the Democratic candidate in the September poll, presidential approval in the Jully poll × Inc, presidential approval in the Jully poll × Presinc and 2nd quarter GNP growth ×    Inc
+
+##### Statewide variables s1,...,s9 
+
+Democratic share of state vote in the last election (as a deviation from the corresponding national vote), 
+    Democratic share of state vote two elections ago (again, as a deviation from national), 
+    home state of the presidential candidate, 
+    home state of the vice-presidential candidate,
+    Democratic majority in the state legislature,
+    (state economic growth in the past year) × Inc,
+    measure of the state ideology,
+    ideological compatibility with candidates and 
+    proportion of Catholics in 1960 compared to U.S. average (1960 had a Catholic presidential candidate)
+
+##### Regional/sub-regional variables r1,...,r6
+
+South indicator, 
+(South indicator in 1964) × (-1)
+(deep South indicator in 1964) × (-1)
+New England indicator in 1964
+New England indicator in 1972 and 
+(West in 1976).
+
+Lastly, we create another variable called Region which signifies the geographical region for the states. Assuming the states are numbered in alphabetical order, the reions are constructed as follows - 
+
+Northeast: 7 8 19 20 21 29 30 32 38 39 45 48,
+
+South: 1 4 9 10 17 18 24 33 36 40 42 43 46,
+
+Midwest: 13 14 15 16 22 23 25 27 34 35 41 49 and 
+
+West: 2 3 5 6 11 12 26 28 31 37 44 47 50.
+
+## Linear model
+
+The first liear model we investigate is  
+
+$$
+D_{vote} = C_1 + \mathbf{1}_{\text{Year}} \cdot C_{\text{Year}} + \mathbf{1}_{\text{State}} \cdot C_{\text{State}} + \Sigma_{i = 1}^4 C_{n_i} \cdot n_i + \Sigma_{i = 1}^9 C_{s_i} \cdot s_i + \Sigma_{i = 1}^6 C_{r_i} \cdot r_i 
+$$
+```{r linear, include = FALSE}
+library(readr)
+library(lme4)
+library(tidyverse)
+X4_US_elections <- read_table("E:/EPFL/AppStat/AppStat/Data/4_US_elections.txt")
+Election_data = X4_US_elections
+Election_data$Region = rep(0, nrow(Election_data))
+Northeast = c(7 ,8 ,19, 20, 21, 29, 30, 32, 38, 39, 45, 48)
+South = c(1, 4, 9, 10, 17, 18, 24, 33, 36, 40, 42, 43, 46)
+Midwest = c(13 ,14 ,15 ,16 ,22 ,23 ,25 ,27 ,34 ,35 ,41 ,49)
+West = c(2 ,3 ,5 ,6 ,11 ,12 ,26 ,28 ,31 ,37 ,44 ,47 ,50)
+Election_data$Region[which(Election_data$state %in% West)] = 'West'
+Election_data$Region[which(Election_data$state %in% Midwest)] = 'Midwest'
+Election_data$Region[which(Election_data$state %in% South)] = 'South'
+Election_data$Region[which(Election_data$state %in% Northeast)] = 'Northeast'
+Election_data$constant = NULL
+Election_data = drop_na(Election_data)
+Originaldata = Election_data
+Election_data$state = as.factor(Election_data$state)
+Election_data$year = as.factor(Election_data$year)
+linear_model = lm(Dvote~.-evotes - Region , data = Election_data)
+linear_model2 = lm(Dvote~.-evotes - Region - year - s7 , data = Election_data)
+```
+We recognise that this model does not have all coefficients estimable. For example, we see that the 'measure of state ideology' variable is equivalent to adding states as the state ideology is not allowed to change in time. 
+
+A more interesting observation is that the nationwide variables will change every year and we know that we already have year as a factor variable. Thus, the coefficients for the nationwide variables are also inestimable.
+
+Thus, we have a cleaner linear model which does not have Year(so as to allow it to predict in a wider range of situations) and s7( it is equivalent to having the state). Thus, the linear model we have is as follows -
+
+$$
+D_{vote} = C_1 +  \mathbf{1}_{\text{State}} \cdot C_{\text{State}}  + \Sigma_{i = 1}^4 C_{n_i} \cdot n_i + \Sigma_{i = 1, i \neq 7}^9 C_{s_i} \cdot s_i + \Sigma_{i = 1}^6 C_{r_i} \cdot r_i 
+$$
+
+## Diagnostics for the linear model
+
+We observe that the linear model may not be the most appropriate because the response is bounded between zero and 1. While the diagnostic plots are more or less appropriate, we expect some dependence between the results within a year, region and state. On investigating the residuals grouped by region and year, we see significant dependence in the residuals. 
+
+```{r echo=FALSE}
+tempdata = Election_data
+tempdata$group = paste(tempdata$Region , tempdata$year)
+ggplot(data = tempdata, aes(y = linear_model2$residuals, col =  group)) + 
+  geom_boxplot() + 
+  ggtitle("Figure 1: Residuals grouped by Region and Year") + 
+  theme(plot.caption = element_text(size = 18))+
+  ylab('Residuals')
+```
+
+Figure 1 raises serious questions about homoskedasticity in the model, as the lengths of the box plots vary significantly. Furthermore, we see that   the residuals for South and West are worse compared to northeast and Midwest. This motivates a mixed effects model for the data.
+
+## Mixed Effects Model
+
+We observe that the data generating process is such that the observations within each year are correlated. Similarly, residuals suggest that there is correlation within Regions. Thus, we allow a nested effects model. 
+
+
+```{r pressure, echo=FALSE}
+mixed_model1 = lmer(Dvote~. -evotes  - year  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
