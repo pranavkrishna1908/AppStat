@@ -449,6 +449,8 @@ pval_random2 = mean(lrstats > lrstat)
 
 
 Questions 
+
+
 Isnt there some werd thing because the nationwide variables are per year and we do not put regularisation on them?
 I think it is alright because these are measured and we can choose to have these as inputs in the model
 (Why regularise? (Somehow, there is structural correlation in the data), but I cannt understand why regularisation is a good idea for this. Bayesian stuff, aright)
@@ -468,12 +470,14 @@ ranef(mixed_model)$year
 1984           0
 1988           0
 1992           0
-##crazy idea
+##crazy ideas
 ```{r}
 mixed_model_crazy = lmer(1/Dvote~. -evotes  - year -Region -s7   + (1|year:Region) , data=Election_data,REML=T)
-mixed_model_crazy2 = lmer(log(Dvote)~. -evotes  - year -Region -s7   + (1|year:Region) , data=Election_data,REML=T)
+mixed_model_crazy2 = lmer(log(Dvote)~. -evotes  - year -Region -s7   + (1|year:Region) , data=Election_data,REML=FALSE)
+
+mixed_model_crazy3 = lm(log(Dvote)~. -evotes  - year -Region -s7    , data=Election_data)
 
 ```
 These crazy models have zero residuals
 
-The mixedmodelfin has higher AIC but mixedmodel has lower AIC
+The mixedmodelfin has higher AIC but mixedmodel has lower AIC, 

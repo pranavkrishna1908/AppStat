@@ -143,7 +143,7 @@ $$
 In this model, $Y_{\text{y,r}}$ contains the individual observations for each state, $X_{\text{yr}}$ is the matrix of fixed effects, namely State, the national variables, the state variables and the regional variables. Again, we choose to drop s7, the measure of state ideology, because it is collinear with the state and does not change in time. The $Z_{\text{y,r}}$ indicates the first level of random effects, the Year, and the $Z_{\text{yr}}$ indicates the second level, Regions within the year.
 
 ```{r pressure, echo=FALSE, include=FALSE}
-mixed_model = lmer(Dvote~. -evotes  - year -Region -s7  + (1|year) + (1|year:Region) , data=Election_data,REML=F)
+mixed_model = lmer(Dvote~. -evotes  - year -Region -s7 + (1|year/Region) , data=Election_data)
 ```
 
 On making a similar grouping of the residuals as figure 1 for this model, we see some improvement in the residuals. All boxplots pass through the zero line, but we still see significant variation in the engths of the boxplots. 
