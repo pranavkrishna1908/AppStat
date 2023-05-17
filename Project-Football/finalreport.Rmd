@@ -53,6 +53,7 @@ We define the 2018-19 and the truncated 2019-90 seasons as pre-covid, the 2020-2
 
 ## Exploration of the Data
 ```{r plot1, echo=FALSE, warning=FALSE}
+options(warn=-1)
 library(ggplot2)
 
 first_plot <- ggplot(data = all_data) +
@@ -85,6 +86,7 @@ first_plot
 In Figure 1, we see that most matches end up with at least one goal by each team and the number of matches where we have more than 3 goals for both the teams is much lower. Also, we remark that even though the figure looks symmetric about the diagonal, in principle, there is no reason why it has to be so. We have plotted each match once, and there is no reason to expect that there is another match wherein the scores of the teams are reversed.
 
 ```{r plot2, echo=FALSE, warning=FALSE}
+options(warn=-1)
 ggplot(helper2) +
   geom_histogram(aes(x = Goals, fill = Home), position = 'dodge') +
   xlab('Goals Scored') +
