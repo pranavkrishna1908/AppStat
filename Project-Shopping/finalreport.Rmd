@@ -58,6 +58,7 @@ First, we discuss the date-related features. These are the Month, Weekend and Sp
 Special Day indicates the closeness of the session to an occasion like Christmas, taking into account Delivery and Other factors. We explore the construction of this feature via Figure 1.
 
 ```{r cars,warning =FALSE, echo = FALSE}
+options(warn=-1)
 temp_plot = ggplot()+
     geom_histogram(position = 'dodge',aes(x = Data$special_day[which(Data$special_day>0)], col = y[which(Data$special_day>0)]))+scale_x_continuous(breaks = seq(0,1,0.2))+
   xlab('Special Day')+ylab('Count') +scale_color_discrete(name = 'Staus of Purchase')+ scale_fill_continuous(labels = c('na', 'ma'))+ labs(title = 'Figure 1: Barplot of Special Day' )
@@ -329,6 +330,7 @@ Even though model 7 is not readily interpretable, we declare model 7 as the fina
 We see that model 7 is significantly better than model 5 by each metric, and we see a very significant impact on the AIC, even though we have added three new covariates by taking square roots. Similarly, we see a significant drop in the Residual Deviance and a sharp rise in the AUC. Thus, our choice in keeping model 7 as the final model is justified.
 
 ## Coefficients of the Final model
+
 <!-- html table generated in R 4.2.1 by xtable 1.8-4 package -->
 <!-- Sun Mar 19 23:13:09 2023 -->
 
