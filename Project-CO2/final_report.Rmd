@@ -1,0 +1,72 @@
+---
+title: "CO2 Final Report"
+output: html_document
+date: "2023-05-05"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Global Warming Trends
+```{r cars ,include = FALSE}
+library(tidyverse)
+library(readr)
+library(forecast)
+CO2_emissions <- read_csv("CO2_emissions.csv")
+temperature <- read_csv("temperature.csv")
+CO2_atmosphere_modified <- read_csv("CO2_atmosphere_modified.csv")
+##
+groupedCO2 = group_by(CO2_emissions, Year)
+yearly_count_CO2 = summarise(groupedCO2, n())
+yearly_CO2 = ts(yearly_count_CO2[,2], start = 1750)
+###
+ts_anomalies = pivot_longer(data = temperature[,1:12],cols = !Year)
+ts_anomalies = ts(ts_anomalies[,3], start = 1880, frequency = 12)
+##
+```
+
+One of the most pressing issues facing the world today is the trend of global warming, which is largely caused by anthropogenic climate change. The Earth's average surface temperature has been increasing steadily over the past few decades, and this trend is expected to continue into the future. In fact, 8 of the last 8 years have been the warmest since the beginning of records. We also point out that the pace of global warming increased rapidly in the decade after 1955, especially due to the efficient exploitation of natural gas and petroleum.
+
+```{r}
+autoplot(ts_anomalies)+ labs(
+    x = "Year",
+    y = "Temperature Anomalies",
+  )+ggtitle('Figure 1: Temperature Anomalies from 1880')
+```
+
+
+
+In this project, we aim to make predictions about the global temperature anomalies for the next 10 years based on ARIMA and Regression models. We will also try to say if the temperature increase is exponential.
+
+## Regression Approach
+
+Here, we try to make the predictions using a usual regression model. Based on Figure 1, we observe the presence of a change point in the 1950-60 decade and decide to model the trend after this. For the first linear model, we try to include the effect of seasonality by including the month as the factor variable. On checking the Likelihood Ratio statistic, we see that month is not significant as the p-value is larger than 0.5. Thus, we can say that the effect of month, and therefore seasons, on the global temperature anomalies, is not significant since 1959. Since the p-value is so large, we believe it  is unlikely to become significant on changing the cut-off.
+
+Next, we try to add the exponential trend and see its importance. 
+
+```{r pressure, include=FALSE}
+library(car)
+cutoff = 1959
+segment = window(ts_anomalies, c(cutoff,1))
+lmData <- data.frame(y = segment,
+                     month = as.factor(  c(rep(1:12,length(segment)/12 ),1)),
+                     t = 1:length(segment))
+lmfit <- lm(value~., data=lmData)#not useful
+lmfit2 <- lm(value~t+ exp(t/1000), data=lmData)
+lmfit3 = lm(value~t+I(t^2), data=lmData)
+
+plot(segment)
+points(seq(cutoff, 2022, length=length(segment)),fitted(lmfit), type="l", col="blue")
+points(seq(cutoff, 2022, length=length(segment)),fitted(lmfit2), type="l", col="red")
+
+
+# plot(resid(lmfit), type="l", col="blue")
+# lmfit2 <- lm(value~.+I(t^2), data=lmData)
+# plot(resid(lmfit2), type="l", col="red")
+# 
+# points(seq(cutoff, 2022, length=length(segment)),fitted(lmfit2), type="l", col="red")
+```
+
+
+

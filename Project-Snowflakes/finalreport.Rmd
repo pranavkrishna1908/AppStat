@@ -8,6 +8,7 @@ date: "2023-03-04"
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE) 
 ```
 # Introduction
+
 The data we have is from a PhD student at an EPFL lab regarding snow-flake diameters. The data is binned with non-uniform bin-length. An extract of the data looks as follows - 
 
 
@@ -18,7 +19,6 @@ head(snowdata)
 
 
 We see a bi-modal distribution on making a histogram of the data.
-
 
 ```{r cars, include=FALSE, warnings=FALSE}
 library(ggplot2)
@@ -71,6 +71,7 @@ dmixlnorm <- function(x, mu1, mu2, sigma1, sigma2, tau){
   y <- (1-tau)*dlnorm(x,mu1,sigma1) + tau*dlnorm(x,mu2,sigma2)
   return(y)
 }
+
 func_plot= function(x){
   return(dmixlnorm(x, params_final[1],params_final[2],params_final[3], params_final[4], params_final[5]))
 }
@@ -103,5 +104,5 @@ Now, we undertake the bootstrap -
 On running the required computations, we get that the p value is 0.997. Thus, we see that the assumption that the underlying distribution for the snowflakes is bilognormal is compatible with the observed data.
 
 # Conclusion 
-After the analysis, we see that the log normal mixture with parameters $(\mu_1 , \mu_2 , \sigma_1 , \sigma_2,\tau) = (-2.01, -0.46, 0.61, 0.30, 0.65)$ is a close fit to the data. On assessing the appropriateness of the log-normal density to the observed data, we see that the afore mentioned distribution is compatible with the data for any reasonable level of significance as the p-value is 0.997.
+After the analysis, we see that the log normal mixture with parameters $(\mu_1 , \mu_2 , \sigma_1 , \sigma_2,\tau) = (-2.01, -0.46, 0.61, 0.30, 0.65)$ is a close fit to the data. On assessing the appropriateness of the log-normal density to the observed data, we see that the afore mentioned distribution is compatible with the data for any reasonable level of significance as the p-value is 0.997. Thus, the previously calculated parameters with the bilogonrmal distribution are a good model for the data. 
 

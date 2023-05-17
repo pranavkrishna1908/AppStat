@@ -84,10 +84,6 @@ plot(gamfit)
 plot(segment)
 points(seq(cutoff, 2022, length=length(segment)), fitted(gamfit), type="l", col="red")
 plot(resid(gamfit), type="l", col="red")
-
-
-
-
 ```
 
 
@@ -101,7 +97,6 @@ points(seq(1880, 2022, length=1573),fitted(lmfit), type="l", col="blue")
 plot(resid(lmfit), type="l", col="blue")
 lmfit2 <- lm(value~.+I(t^2), data=lmData)
 plot(resid(lmfit2), type="l", col="red")
-
 points(seq(1880, 2022, length=1573),fitted(lmfit2), type="l", col="red")
 ###
 library(mgcv) # package for generalized additive models

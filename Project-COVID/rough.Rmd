@@ -1,0 +1,85 @@
+---
+title: "rough work"
+output: html_document
+date: "2023-05-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+library(tidyverse)
+library(readr)
+covid_deaths_usafacts <- read_csv("covid_deaths_usafacts.csv")
+data <- covid_deaths_usafacts[, !colnames(covid_deaths_usafacts) %in% c("countyFIPS", "County Name", "StateFIPS")]
+statewise_data = data %>% 
+  group_by(State) %>% 
+  summarize_all(sum)
+data_daily = t ( statewise_data[,-1])
+colnames(data_daily) = as.vector(statewise_data$State)
+populations = c(733583, 5074296, 3045637, 7359197, 39029342, 5839926, 3626205,
+                671803, 1018396, 22244823, 10912876, 1440196, 3200517, 1939033,
+                12582032, 6833037, 2937150, 4512310, 4590241, 6981974, 6164660, 
+                1385340, 1385340, 5717184, 6177957, 2940057, 1122867, 
+                10698973, 779261, 1967923, 1395231, 9261699, 2113344, 3177772 ,19677151, 
+                11756058, 4019800, 4240137, 12972008, 1093734, 5282634, 909824, 
+                7051339, 30029572, 3380800, 8683619, 647064, 7785786, 5892539,
+                1775156, 581381)#hnnes ad thibault
+#wrong
+# start_point = apply(data_daily, 2, function(coloumn) which(coloumn>20)[1])
+# startpoint = max(start_point)
+# final = apply(data_daily, 1, function(row) row/populations)
+# cumultaive = apply(final, 2, function(column) cumsum(column))
+# logged_cmulative = apply(cumultaive, 2, function(row) log(row))
+# non_zer_final = logged_cmulative[,startpoint:ncol(final)]
+# data_prepared = t(non_zer_final)
+# Smoothed = apply(data_prepared,2, function(col) predict(smooth.spline(col))$y )
+
+# count_data_500days = apply(data_daily, 2,
+#                            function(coloumn)
+#                           coloumn[which(coloumn>20)[1]:(which(coloumn>20)[1] + 300) )
+
+count_data_fewdays = apply(data_daily, 2,
+                           function(coloumn)
+                          coloumn[which(coloumn>20)[1]:(which(coloumn>20)[1] + 60)] )
+cumultaive = apply(count_data_fewdays, 2, function(column) cumsum(column))
+Smoothed = apply(data_prepared,2, function(col) predict(smooth.spline(col))$y )
+
+final = apply(Smoothed , 1, function(row) row/populations)
+logged_cmulative = apply(cumultaive, 2, function(row) log(row, base =2))
+data_prepared = t(non_zer_final)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+
+```
+
+
+```{r}
+PCA_data = t(scale(data_prepared, center = TRUE, scale = FALSE))
+results = svd(PCA_data)
+plot(results$v[,1])
+plot(results$v[,2])
+plot(results$v[,3])
+total_d_i = sum(results$d**2)
+var_explained = 100*results$d**2/total_d_i
+```
+## now, make plts
+```{r}
+plot(count_data_fewdays[,1], type = 'l')
+for(i in 2:51){
+  points(count_data_fewdays[,i], col = i, type = 'l')
+}
+```
+
