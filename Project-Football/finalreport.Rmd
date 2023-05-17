@@ -82,7 +82,7 @@ first_plot
 
 ```
 
-In Figure 1, we see that most matches end up with at least one goal by each team and the number of matches where we have more than 3 goals for both the teams is very less. Also, we remark that even though the figure looks symmetric about the diagonal, in principle, there is no reason why it has to be so. We have plotted each match once, and there is no reason to expect that there is another match wherein the scores of the teams are reversed.
+In Figure 1, we see that most matches end up with at least one goal by each team and the number of matches where we have more than 3 goals for both the teams is much lower. Also, we remark that even though the figure looks symmetric about the diagonal, in principle, there is no reason why it has to be so. We have plotted each match once, and there is no reason to expect that there is another match wherein the scores of the teams are reversed.
 
 ```{r plot2, echo=FALSE, warning=FALSE}
 ggplot(helper2) +
@@ -96,7 +96,7 @@ ggplot(helper2) +
   scale_fill_discrete(labels = c('Away', 'Home'))
 ```
 
-From Figure 2, we see that in aggregate, the Teams at home make more goals than the teams playing away, as shown by the excess height of the Blue bar compared to the Red one for all non-zero number of goals. Thus, we see a strong hint that the Home Advantage effect definitely exists. 
+From Figure 2, we see that in aggregate, the Teams at home score more goals than the teams playing away, as shown by the excess height of the Blue bar compared to the Red one for all non-zero number of goals. Thus, we see a strong hint that the Home Advantage effect definitely exists. 
 
 
 ## Objectives
