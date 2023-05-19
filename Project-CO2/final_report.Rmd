@@ -21,52 +21,273 @@ groupedCO2 = group_by(CO2_emissions, Year)
 yearly_count_CO2 = summarise(groupedCO2, n())
 yearly_CO2 = ts(yearly_count_CO2[,2], start = 1750)
 ###
-ts_anomalies = pivot_longer(data = temperature[,1:12],cols = !Year)
-ts_anomalies = ts(ts_anomalies[,3], start = 1880, frequency = 12)
+ts_anomalies_temp = pivot_longer(data = temperature[,1:13],cols = !Year)
+ts_anomalies = ts(ts_anomalies_temp[,3], start = 1880, frequency = 12)
 ##
 ```
 
 One of the most pressing issues facing the world today is the trend of global warming, which is largely caused by anthropogenic climate change. The Earth's average surface temperature has been increasing steadily over the past few decades, and this trend is expected to continue into the future. In fact, 8 of the last 8 years have been the warmest since the beginning of records. We also point out that the pace of global warming increased rapidly in the decade after 1955, especially due to the efficient exploitation of natural gas and petroleum.
 
-```{r}
+```{r, echo = FALSE}
 autoplot(ts_anomalies)+ labs(
     x = "Year",
     y = "Temperature Anomalies",
   )+ggtitle('Figure 1: Temperature Anomalies from 1880')
 ```
 
+In this project, we aim to make predictions about the global temperature anomalies for the next 50 years based on ARIMA and Regression models. We will also try to say if the temperature increase trend is exponential.
 
+## SARIMA Model Approach
 
-In this project, we aim to make predictions about the global temperature anomalies for the next 10 years based on ARIMA and Regression models. We will also try to say if the temperature increase is exponential.
+The SARIMA Model is a time series model where we assume that the underlying process is an ARIMA process with seasonality. We try to find the best models with differencing set to 1. We try various models with various values for the seasonality, AR and MA parts of the model by looking at the ACF and PACF. We observed in the introduction that there is a change point in the 1950-60 decade. We try to fit a SARIMA model with a drift from a change point assumed to be in 1958 to the current date. 
 
-## Regression Approach
-
-Here, we try to make the predictions using a usual regression model. Based on Figure 1, we observe the presence of a change point in the 1950-60 decade and decide to model the trend after this. For the first linear model, we try to include the effect of seasonality by including the month as the factor variable. On checking the Likelihood Ratio statistic, we see that month is not significant as the p-value is larger than 0.5. Thus, we can say that the effect of month, and therefore seasons, on the global temperature anomalies, is not significant since 1959. Since the p-value is so large, we believe it  is unlikely to become significant on changing the cut-off.
-
-Next, we try to add the exponential trend and see its importance. 
-
-```{r pressure, include=FALSE}
-library(car)
-cutoff = 1959
+```{r echo=FALSE}
+cutoff = 1958
 segment = window(ts_anomalies, c(cutoff,1))
-lmData <- data.frame(y = segment,
-                     month = as.factor(  c(rep(1:12,length(segment)/12 ),1)),
-                     t = 1:length(segment))
-lmfit <- lm(value~., data=lmData)#not useful
-lmfit2 <- lm(value~t+ exp(t/1000), data=lmData)
-lmfit3 = lm(value~t+I(t^2), data=lmData)
-
-plot(segment)
-points(seq(cutoff, 2022, length=length(segment)),fitted(lmfit), type="l", col="blue")
-points(seq(cutoff, 2022, length=length(segment)),fitted(lmfit2), type="l", col="red")
-
-
+differenced = diff(ts_anomalies, differences = 1) 
+pacf(differenced, main = 'Figure 2: PACF for 1-differenced Time Series')# AR of 1 2 usual, 0 for sesonality, since the graph oes down slowly, also some part of MA
+acf(differenced, main = 'Figure 3: ACF for 1-differenced Time Series')#MA 1 atleast, maybe check 2, 0 for seasonality
+# lmData <- data.frame(y = segment,
+#                      month = as.factor(  c(rep(1:12,length(segment)/12 ),1)),
+#                      t = 1:length(segment))
+# lmfit <- lm(value~. + exp(t/1000) -t, data=lmData)
+# plot(segment)
+# points(seq(cutoff, 2022, length=length(segment)),fitted(lmfit), type="l", col="blue")
 # plot(resid(lmfit), type="l", col="blue")
 # lmfit2 <- lm(value~.+I(t^2), data=lmData)
 # plot(resid(lmfit2), type="l", col="red")
 # 
 # points(seq(cutoff, 2022, length=length(segment)),fitted(lmfit2), type="l", col="red")
+# ###
+# library(mgcv) # package for generalized additive models
+# gamfit <- gam(value~s(t)+month, data=lmData)
+# plot(gamfit)
+# plot(segment)
+# points(seq(cutoff, 2022, length=length(segment)), fitted(gamfit), type="l", col="red")
+# plot(resid(gamfit), type="l", col="red")
+```
+
+We see in Figure 3 that the PACF goes down slowly while the ACF in Figure 2 falls down sharply after 1. While we do not see good evidence for seasonality of lag 1, we see some evidence for seasonality with lag 2. Thus, we decide to set the seasonal AR and MA components to 1 alternately and focus on the non-seasonal ARIMA model. Finally, we conclude that AR component can be 1 or 2, while we expect MA component to be 1 by looking at the ACF and the PACF. 
+We were having problems with convergence when we set seasonality with MA 1, thus, we limited ourselves to cases where the seasonality is only in terms of AR and is 0 or 1.
+
+Thus, we have our candidate models for the ARIMA and try to find the best model using AIC and Residual error via Predictive Checking. We find that the Predictive error is minimised for the combination  (1,1,1) with AR seasonality 1. But, the AIC is comparatively high for this combination compared to the other combinations, even when we consider the other models without seasonality. In the interest of having a simpler model, we decide to use the (2,1,1) model with AR seasonality 1 as the final model in the approach. Thus, the final model we have is a ARIMA model with differencing 1, and the AR component being 2 and the MA component being 1 and seasonality having one AR component. We remark that the prediction error is not very different across the models, even the ones without seasonality.
+
+```{r, include=FALSE}
+## seeasonality with ar 1
+n <- length(segment)
+x = segment
+train <- 1:(n-floor(n/3))
+Err <- array(0,c(5, floor(n/3)-2+1 )) # rolling 2-step ahead forecast
+for(j in 0:( floor(n/3)-2 )){
+fit <- arima(x[train+j], order=c(3,1,1), seasonal = c(1,0,0))
+Err[1,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+fit <- arima(x[train+j], order=c(2,1,1), seasonal = c(1,0,0))
+Err[2,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+fit <- arima(x[train+j], order=c(1,1,1), seasonal = c(1,0,0))
+Err[3,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+fit <- arima(x[train+j], order=c(3,1,2), seasonal = c(1,0,0))
+Err[4,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+fit <- arima(x[train+j], order=c(2,1,2), seasonal = c(1,0,0))
+Err[5,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+}
+rowMeans(Err)
+#####
+ARIMA_MODEL = Arima(segment, order = c(3,1,1), include.drift = TRUE, seasonal = c(1,0,0))
+tsdiag(ARIMA_MODEL)
+ARIMA_MODEL2 = Arima(segment, order = c(2,1,1), include.drift = TRUE, seasonal = c(1,0,0))#two residuals at k = 4 sigma squared, dont like it
+tsdiag(ARIMA_MODEL2)#simpler model compared to ma3, dont like it very much, aic etc are close
+ARIMA_MODEL3 = Arima(segment, order = c(1,1,1), include.drift = TRUE, seasonal = c(1,0,0))
+tsdiag(ARIMA_MODEL3)# shady p values, please dont
+ARIMA_MODEL4 = Arima(segment, order = c(3,1,2), include.drift = TRUE, seasonal = c(1,0,0))#not better compared to ARIMA_MODEL, very large residuals sometimes
+ARIMA_MODEL5 = Arima(segment, order = c(2,1,2), include.drift = TRUE, seasonal = c(1,0,0))
+tsdiag(ARIMA_MODEL5)
+# 
+# ##### Seanlaity with ma 1
+# n <- length(segment)
+# x = segment
+# train <- 1:(n-floor(n/3))
+# Err2 <- array(0,c(5, floor(n/3)-2+1 )) # rolling 2-step ahead forecast
+# for(j in 0:( floor(n/3)-2 )){
+# fit <- arima(x[train+j], order=c(3,1,1), seasonal = c(0,0,1))
+# Err2[1,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# fit <- arima(x[train+j], order=c(2,1,1), seasonal = c(0,0,1))
+# Err2[2,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# fit <- arima(x[train+j], order=c(1,1,1), seasonal = c(0,0,1))
+# Err2[3,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# fit <- arima(x[train+j], order=c(3,1,2), seasonal = c(0,0,1))
+# Err2[4,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# fit <- arima(x[train+j], order=c(2,1,2), seasonal = c(0,0,1))
+# Err2[5,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# }
+# rowMeans(Err2)
+# #####
+# ARIMA_MODEL_MA1 = Arima(segment, order = c(3,1,1), include.drift = TRUE, seasonal = c(0,0,1))
+# tsdiag(ARIMA_MODEL_MA1)
+# ARIMA_MODEL_MA12 = Arima(segment, order = c(2,1,1), include.drift = TRUE, seasonal = c(0,0,1))#two residuals at k = 4 sigma squared, dont like it
+# tsdiag(ARIMA_MODEL_MA12)#simpler model compared to ma3, dont like it very much, aic etc are close
+# ARIMA_MODEL_MA13 = Arima(segment, order = c(1,1,1), include.drift = TRUE, seasonal = c(0,0,1))
+# tsdiag(ARIMA_MODEL_MA13)# shady p values, please dont
+# ARIMA_MODEL_MA14 = Arima(segment, order = c(3,1,2), include.drift = TRUE, seasonal = c(0,0,1))#not better compared to ARIMA_MODEL_MA1, very large residuals sometimes
+# ARIMA_MODEL_MA15 = Arima(segment, order = c(2,1,2), include.drift = TRUE, seasonal = c(0,0,1))
+# tsdiag(ARIMA_MODEL_MA15)
+# ## Seasonality with both ar and MA 1
+# n <- length(segment)
+# x = segment
+# train <- 1:(n-floor(n/3))
+# Err3 <- array(0,c(5, floor(n/3)-2+1 )) # rolling 2-step ahead forecast
+# for(j in 0:( floor(n/3)-2 )){
+# fit <- arima(x[train+j], order=c(3,1,1), seasonal = c(1,0,1))
+# Err3[1,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# fit <- arima(x[train+j], order=c(2,1,1), seasonal = c(1,0,1))
+# Err3[2,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# fit <- arima(x[train+j], order=c(1,1,1), seasonal = c(1,0,1))
+# Err3[3,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# fit <- arima(x[train+j], order=c(3,1,2), seasonal = c(1,0,1))
+# Err3[4,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# fit <- arima(x[train+j], order=c(2,1,2), seasonal = c(1,0,1))
+# Err3[5,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+# }
+# rowMeans(Err)
+# #####
+# ARIMA_MODEL_MA1AR = Arima(segment, order = c(3,1,1), include.drift = TRUE, seasonal = c(1,0,1))
+# tsdiag(ARIMA_MODEL_MA1AR)
+# ARIMA_MODEL_MA1AR2 = Arima(segment, order = c(2,1,1), include.drift = TRUE, seasonal = c(1,0,1))
+# tsdiag(ARIMA_MODEL_MA1AR2)
+# ARIMA_MODEL_MA1AR3 = Arima(segment, order = c(1,1,1), include.drift = TRUE, seasonal = c(1,0,1))
+# tsdiag(ARIMA_MODEL_MA1AR3)
+# ARIMA_MODEL_MA1AR4 = Arima(segment, order = c(3,1,2), include.drift = TRUE, seasonal = c(1,0,1))
+# ARIMA_MODEL_MA1AR5 = Arima(segment, order = c(2,1,2), include.drift = TRUE, seasonal = c(1,0,1))
+# tsdiag(ARIMA_MODEL_MA1AR5)
+## seeasonality with ar 1
+n <- length(segment)
+x = segment
+train <- 1:(n-floor(n/3))
+Err2 <- array(0,c(5, floor(n/3)-2+1 )) # rolling 2-step ahead forecast
+for(j in 0:( floor(n/3)-2 )){
+fit <- arima(x[train+j], order=c(3,1,1), )# = c(1,0,0))
+Err2[1,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+fit <- arima(x[train+j], order=c(2,1,1), )# = c(1,0,0))
+Err2[2,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+fit <- arima(x[train+j], order=c(1,1,1), )# = c(1,0,0))
+Err2[3,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+fit <- arima(x[train+j], order=c(3,1,2), )# = c(1,0,0))
+Err2[4,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+fit <- arima(x[train+j], order=c(2,1,2), )# = c(1,0,0))
+Err2[5,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
+}
+rowMeans(Err2)
+#####
+Arima_model_nos = Arima(segment, order = c(3,1,1), include.drift = TRUE, )# = c(1,0,0))
+tsdiag(Arima_model_nos)
+Arima_model_nos2 = Arima(segment, order = c(2,1,1), include.drift = TRUE, )# = c(1,0,0))#two residuals at k = 4 sigma squared, dont like it
+tsdiag(Arima_model_nos2)#simpler model compared to ma3, dont like it very much, aic etc are close
+Arima_model_nos3 = Arima(segment, order = c(1,1,1), include.drift = TRUE, )# = c(1,0,0))
+tsdiag(Arima_model_nos3)# shady p values, please dont
+Arima_model_nos4 = Arima(segment, order = c(3,1,2), include.drift = TRUE, )# = c(1,0,0))#not better compared to Arima_model_nos, very large residuals sometimes
+Arima_model_nos5 = Arima(segment, order = c(2,1,2), include.drift = TRUE, )# = c(1,0,0))
+tsdiag(Arima_model_nos5)
 ```
 
 
+```{r, echo = FALSE}
+library(ggplot2)
+errors_vec = as.vector(ARIMA_MODEL2$residuals)
+# 
+# ggplot()+
+#   geom_point(mapping = aes(x = 1:length(errors_vec), y = (errors_vec - mean(errors_vec))/sd(errors_vec)))
 
+
+autoplot(ts(scale(errors_vec), start = 1958, frequency = 12))+  xlab('Index')+
+  ylab('Standardised Errors')+
+  ggtitle('Figure 4: Residuals from ARIMA model with paramters (2,1,1) and \n Seasonality (1,0,0)')
+# sum(abs((as.vector(ARIMA_MODEL2$residuals) - mean(as.vector(ARIMA_MODEL2$residuals)))/sd(as.vector(ARIMA_MODEL2$residuals) - mean(as.vector(ARIMA_MODEL2$residuals)))) > 2)
+# pnorm(mean(errors_vec)/(sd(errors_vec)/sqrt(length(errors_vec))))
+```
+
+We look at the diagnostic plots for the final model in Figure 4 and observe that we do not observe any remaining dependence in the residuals. Thus, we believe that the model fits adequately to the data. We observe that 29 points are outside the $\pm2$ band  and 5 points outside the $\pm3$ band. On testing against the NULL hypothesis that these residuals arise from a Standard Normal distribution, we see that the p value is close to 0.3, thus indicating that we do not have enough evidence to reject the Null hypothesis. But, we also observe quite a few residuals close to being 4 sd away from zero which suggests that the error distribution might not be normal.
+
+## Predictions 
+
+We look at the predictions of this model for the next 50 years in Figure 5. We see that there is a linear trend which is perhaps an artifact of the linear drift term of the forecast library.
+
+```{r, echo = FALSE}
+library(forecast)
+fav_fit = Arima(segment, order = c(2,1,1), include.drift = TRUE, seasonal = c(1,0,0))
+preds = forecast(fav_fit, 12*40, c(0.5, 0.95))
+plot_preds = autoplot(segment) + autolayer(cbind(preds$mean, preds$lower, preds$upper)) +
+  xlab('Year') + ylab('Temperature Anomalies') +
+   scale_color_manual(labels = c("Lower 50%", "Lower 95%", 'Mean','Upper 50%', 'Upper 95%')
+                     ,values = c("blue", "red","black", "blue", "red"))+
+  ggtitle('Figure 5: Prediction of Temperature Anomalies for next 50 years ')
+plot_preds
+```
+
+### Auto ARIMA Approach
+
+
+```{r include = FALSE}
+arima_best = auto.arima(segment)
+```
+
+
+We also supplied the data to the autoarima function of the Forecast library and found out that the best fit utilized a ARIMA(2,1,2) model without seasonality. Since the number of parameters is the same, it is not very obvious how the two models are different. But moving forward, we choose to utilize the (2,1,1) dependence structure without seasonality in the regression approach.
+
+## Regression Approach
+
+We observed in the previous section that differenced process after 1958 is appropriately modeled by the ARMA(2,1,1) model. In this section, we try to model the trend by regression instead of having a constant drift of the Arima function in the package forecast.
+
+In this section, we model the drift using a linear, quadratic and an exponential term and select the appropriate trend. To incorporate the dependency structure due to the sequential nature of the data, we use the generalised least squares with the correlation structure corresponding to the ARMA(2,1) process. 
+
+Thus, the provisional model is as follows -
+
+$$
+X_t = \beta_0 + \beta_1 \cdot t + \beta_2 \cdot t^2 + \beta_3 \cdot e ^{t/100} + C_{\text{Month}}  \mathbf{1}_{\text{Month}} + \epsilon_t
+$$
+
+```{r pressure, include=FALSE,echo = FALSE}
+lmData <- data.frame(y = ts_anomalies,
+                     month = as.factor(rep(1:12,length(ts_anomalies)/12)),
+                    # t = c(rep(1880:2022, each = 12)))
+                    t = 1:length(ts_anomalies))
+library(nlme)
+R_struct <- corARMA(form=~t, p=2, q = 1) # ARMA(2,1) correlation structure
+glsfit1 <- gls(value~t+month + I(t^2) + exp(t/100), data=lmData, corr=R_struct, method = 'ML')
+glsfit2 <- gls(value~t+month + I(t^2) + exp(t/500), data=lmData, corr=R_struct, method = 'ML')
+glsfit_final_21 <- gls(value~t+month + I(t^2) , data=lmData, corr=R_struct, method = 'ML')
+glsfit_final2 <- gls(value~t + I(t^2) , data=lmData, corr=R_struct, method = 'ML')
+glsfit_final3 <- gls(value~t + I(t^2) , data=lmData, corr=R_struct)
+anova(glsfit1, glsfit_final_21)
+anova(glsfit2, glsfit_final_21)
+anova(glsfit_final_21, glsfit_final2)
+R_struct2 <- corARMA(form=~t, p=3, q = 1) # ARMA(2,1) correlation structure
+glsfit_final <- gls(value~t+month + I(t^2) , data=lmData, corr=R_struct, method = 'ML')
+```
+
+We do a model submodel test with and without the exponential term and find that the p-value is 0.27. This suggests that the exponential trend is not significant and the data is adequately modeled using a quadratic trend. We tried to change the coefficient to 500 in the Time scaling for the exponential term and still realised that it was still not significant.  Thus, we can comfortably say that the there is not enough evidence in the data for an exponential trend.
+
+When we tried to remove the month as a covariate, we got a p-value of 0.0004 which clearly suggests that the month is an important covariate for the temperature anomalies. Thus, the  model we have is as follows -
+
+$$
+X_t = -0.191 + 4.07 \cdot 10^{-4} \cdot t + 6.10 \cdot 10^{-7} \cdot t^2  + C_{\text{Month}}  \mathbf{1}_{\text{Month}} + \epsilon_t
+$$
+```{r, echo = FALSE}
+std_resid =(glsfit_final$residuals - mean(glsfit_final$residuals))/sd(glsfit_final$residuals - mean(glsfit_final$residuals))
+  autoplot(ts(std_resid, start = 1880, frequency = 12))+
+  ylab('Standardised Residual')+ ggtitle('Figure 5:Standardised Residuals for Trend using Regression for ARMA(2,1) \n dependence structure')
+```
+
+We look at the residuals in Figure 6 and observe dependence, especially in the 1940s. This may possibly be due to the changepoint phenomenon. We try to model the same data using the dependence structure corresponding to an ARMA(3,1) and did not see any improvement in the dependence of the residuals in the 1940s decade.
+
+## Predictions
+
+```{r, echo = FALSE}
+future = data.frame(cbind( t = as.numeric(1717:2316), month = rep(1:12, 50)))
+future$month = as.factor(future$month)
+predictions <- predict(glsfit_final, newdata = future)
+plotting_data = cbind(predictions, future)
+autoplot(ts(ts_anomalies, start = 1880, frequency = 12))+autolayer(ts(predictions, start = 2023, frequency = 12))+
+  ylab('Temperature Anomalies') + ggtitle('Figure 6: Predictions of Trend for Temperature Anomalies using Regression  \n and ARMA(2,1)  correlation structure') +scale_color_manual(labels = c("Forecast")
+                     ,values = c("red"))
+```
+
+Figure 6 clearly appears to be an improvement over the predictions in Figure 5, as the non-linearity is evident in the later part of the forecast. We observe a clearly increasing trend and also the fact that given the Business as Usual Scenario, we are expected to breach the 1.5 Degree limit before 2050 and the 2 Degree Limit before the end of the century. Lastly, we remark that the Regression approach appears to have captured the variability in the data better than the Sarima approach as it is able to incorporate the non-linearity in the trend. 

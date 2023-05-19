@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## R Markdown
-
+ 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
@@ -38,6 +38,7 @@ ts_anomalies = ts(ts_anomalies[,3], start = 1880, frequency = 12)
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
 ## Form of globad warming
 
 ```{r}
@@ -88,6 +89,7 @@ plot(resid(gamfit), type="l", col="red")
 
 
 ##gam without month
+
 ```{r}
 lmData <- data.frame(y = ts_anomalies,
                      t = 1:length(ts_anomalies))
@@ -127,6 +129,7 @@ temp4 = arima(ts_anomalies, order = c(2,1,4))
 
 ## try the same for cutoff
 ```{r}
+library(forecast)
 #no seasonal, only arim adifference
 differenced = diff(segment, differences = 1) 
 pacf(differenced)# AR of 1 2 3 usual, 0 for sesonality, since the graph oes down slowly, also some part of MA
@@ -160,7 +163,6 @@ fit <- arima(x[train+j], order=c(3,1,2))
 Err[4,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
 fit <- arima(x[train+j], order=c(2,1,2))
 Err[5,j+1] <- sum(x[c(1,2) + end(train)[1]+j] - predict(fit, n.ahead=2)$pred)^2
-
 }
 rowMeans(Err)
 #[1] 0.04228735 0.04217435 0.04363595 0.04228673 0.04237732, choose second
@@ -206,10 +208,12 @@ autoplot(ts(temp5[["residuals"]]))
 #thingstgnisg
 
 ```{r}
+lmData <- data.frame(y = segment,
+                     month = as.factor(  c(rep(1:12,length(segment)/12 ),1)),
+                     t = 1:length(segment))
 library(nlme)
-R_struct <- corARMA(form=~t, p=2, q = 1) # AR(1) correlation structure
-glsfit <- gls(value~t+month, data=lmData, corr=R_struct, method="ML")
-confint(lmfit)["t",]
-
+R_struct <- corARMA(form=~t, p=2, q = 1) # ARMA(2,1) correlation structure
+glsfit <- gls(value~t+month, data=lmData, corr=R_struct)
+confint(glsfit)["t",]
 ```
 
