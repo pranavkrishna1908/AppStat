@@ -50,9 +50,9 @@ count_data_fewdays = apply(data_daily, 2,
                            function(coloumn)
                           coloumn[which(coloumn>deaths_threshold)[1]:(which(coloumn>deaths_threshold)[1] + 60)] )
 cumultaive = apply(count_data_fewdays, 2, function(column) cumsum(column))
-Smoothed = apply(cumultaive,2, function(col) predict(smooth.spline(col))$y )
+percapita = apply(cumultaive , 1, function(row) row/populations)
+final = apply(cumultaive,2, function(col) predict(smooth.spline(col))$y )
 
-final = apply(Smoothed , 1, function(row) row/populations)
 logged_cmulative = apply(cumultaive, 2, function(row) log(row, base =2))
 data_prepared = t(logged_cmulative)
 PCA_data = scale(data_prepared, center = TRUE, scale = FALSE)
@@ -86,9 +86,9 @@ print(var_explained[1])
 ```
 ## now, make plts
 ```{r}
-plot(count_data_fewdays[,1], type = 'l')
+plot(logged_cmulative[,5], type = 'l')
 for(i in 2:51){
-  points(count_data_fewdays[,i], col = i, type = 'l')
+  points(logged_cmulative[,i], col = i, type = 'l')
 }
 ```
 

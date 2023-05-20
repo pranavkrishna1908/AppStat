@@ -250,6 +250,7 @@ lmData <- data.frame(y = ts_anomalies,
                     # t = c(rep(1880:2022, each = 12)))
                     t = 1:length(ts_anomalies))
 library(nlme)
+library(investr)
 R_struct <- corARMA(form=~t, p=2, q = 1) # ARMA(2,1) correlation structure
 glsfit1 <- gls(value~t+month + I(t^2) + exp(t/100), data=lmData, corr=R_struct, method = 'ML')
 glsfit2 <- gls(value~t+month + I(t^2) + exp(t/500), data=lmData, corr=R_struct, method = 'ML')
@@ -278,7 +279,7 @@ std_resid =(glsfit_final$residuals - mean(glsfit_final$residuals))/sd(glsfit_fin
 
 We look at the residuals in Figure 6 and observe dependence, especially in the 1940s. This may possibly be due to the changepoint phenomenon. We try to model the same data using the dependence structure corresponding to an ARMA(3,1) and did not see any improvement in the dependence of the residuals in the 1940s decade.
 
-## Predictions
+### Predictions
 
 ```{r, echo = FALSE}
 future = data.frame(cbind( t = as.numeric(1717:2316), month = rep(1:12, 50)))
@@ -288,6 +289,29 @@ plotting_data = cbind(predictions, future)
 autoplot(ts(ts_anomalies, start = 1880, frequency = 12))+autolayer(ts(predictions, start = 2023, frequency = 12))+
   ylab('Temperature Anomalies') + ggtitle('Figure 6: Predictions of Trend for Temperature Anomalies using Regression  \n and ARMA(2,1)  correlation structure') +scale_color_manual(labels = c("Forecast")
                      ,values = c("red"))
+
+# interval <- as_tibble(predFit(glsfit_final, newdata = future, interval = "confidence", level= 0.9)) %>% 
+#         mutate(as.numeric(1717:2316))
+#https://stats.stackexchange.com/questions/331810/prediction-intervals-for-generalized-least-squares-model-with-heteroscedastic-er?noredirect=1&lq=1
+
+
+
+
 ```
 
 Figure 6 clearly appears to be an improvement over the predictions in Figure 5, as the non-linearity is evident in the later part of the forecast. We observe a clearly increasing trend and also the fact that given the Business as Usual Scenario, we are expected to breach the 1.5 Degree limit before 2050 and the 2 Degree Limit before the end of the century. Lastly, we remark that the Regression approach appears to have captured the variability in the data better than the Sarima approach as it is able to incorporate the non-linearity in the trend. 
+
+## Conclusion
+
+We saw in the previous section that there is not enough evidence in the data to support an exponential trend in the temperature anomalies. The trend is adequately modelled by a quadratic term and some effect due to the monthly variations. We also observed that the data is adequately modelled using a linear trend in the period post 1958. This suggests that fossil fuel utilisation, especially the efficient exploitation of natural gas and petroleum, has not been decreased and has been a consistent  factor in the temperature increase.
+
+## Appendix
+
+In this section, we explain how we decided on a ARMA(2,2) dependence structure for the residuals in the Regression approach. We first look the residuals from fitting a Linear model with the quadratic, exponential, linear and month covariates and observe some dependence in the residuals in Figure 7. We see some dependence in the residuals and some residuals are even 4sd away from the predicted value. In Figure 8, we see that the AR component is clearly 2, while the ACF in figure 9 falls down slowly due to these AR components. We decide to keep an MA component of 1 for simplicity. Lastly, we remark that this choice is close o optimal, as the autoarima function gives us a ARIMA(1,0,1) model without the mean. Thus, the ARMA(2,1) dependence structure we assume is justified.
+```{r, echo = FALSE}
+lmfit1 <- lm(value~t+month + I(t^2) + exp(t/100), data=lmData)
+autoplot(ts(scale(lmfit1$residuals), start = 1880,frequency = 12))+ ylab('Standardised Residuals')+ggtitle('Figure 7: Standardised Residuals for Linear Model with Uncorrelated Errors')
+pacf(ts(lmfit1$residuals), main = 'Figure 8: PACF of Uncorrelated Residuals')
+acf(ts(lmfit1$residuals), main = 'Figure 9:ACF of Uncorrelated Residuals')
+```
+
