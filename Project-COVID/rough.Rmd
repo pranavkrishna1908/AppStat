@@ -15,9 +15,9 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r cars}
-library(tidyverse)
-library(readr)
-covid_deaths_usafacts <- read_csv("covid_deaths_usafacts.csv")
+# library(tidyverse)
+# library(readr)
+# covid_deaths_usafacts <- read_csv("covid_deaths_usafacts.csv")
 data <- covid_deaths_usafacts[, !colnames(covid_deaths_usafacts) %in% c("countyFIPS", "County Name", "StateFIPS")]
 statewise_data = data %>% 
   group_by(State) %>% 
@@ -45,16 +45,24 @@ populations = c(733583, 5074296, 3045637, 7359197, 39029342, 5839926, 3626205,
 # count_data_500days = apply(data_daily, 2,
 #                            function(coloumn)
 #                           coloumn[which(coloumn>20)[1]:(which(coloumn>20)[1] + 300) )
-
+deaths_threshold = 2
 count_data_fewdays = apply(data_daily, 2,
                            function(coloumn)
-                          coloumn[which(coloumn>20)[1]:(which(coloumn>20)[1] + 60)] )
+                          coloumn[which(coloumn>deaths_threshold)[1]:(which(coloumn>deaths_threshold)[1] + 60)] )
 cumultaive = apply(count_data_fewdays, 2, function(column) cumsum(column))
-Smoothed = apply(data_prepared,2, function(col) predict(smooth.spline(col))$y )
+Smoothed = apply(cumultaive,2, function(col) predict(smooth.spline(col))$y )
 
 final = apply(Smoothed , 1, function(row) row/populations)
 logged_cmulative = apply(cumultaive, 2, function(row) log(row, base =2))
-data_prepared = t(non_zer_final)
+data_prepared = t(logged_cmulative)
+PCA_data = scale(data_prepared, center = TRUE, scale = FALSE)
+results = svd(PCA_data)
+plot(abs(results$v[,1]))
+plot(abs(results$v[,2]))
+plot(results$v[,3])
+total_d_i = sum(results$d**2)
+var_explained = 100*results$d**2/total_d_i
+print(var_explained[1])
 ```
 
 ## Including Plots
@@ -67,13 +75,14 @@ You can also embed plots, for example:
 
 
 ```{r}
-PCA_data = t(scale(data_prepared, center = TRUE, scale = FALSE))
+PCA_data = scale(data_prepared, center = TRUE, scale = FALSE)
 results = svd(PCA_data)
-plot(results$v[,1])
-plot(results$v[,2])
+plot(abs(results$v[,1]))
+plot(abs(results$v[,2]))
 plot(results$v[,3])
 total_d_i = sum(results$d**2)
 var_explained = 100*results$d**2/total_d_i
+print(var_explained[1])
 ```
 ## now, make plts
 ```{r}
