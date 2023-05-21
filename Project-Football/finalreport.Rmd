@@ -155,7 +155,7 @@ We see selected coefficients from the model in Table 1.
 
 We see that the effect of the Home advantage had  disappeared in Covid, and continues to be slightly depressed after covid. This sugests that the presence of Fans is strongly related to the Home Advantage Effect.
 
-We also conclude that during Covid, the teams were making 6% more goals on average than before Covid, regardless of venue as $e^{0.06} - 1 \approx 0.06$. Similarly, after Covid, we do not see a significant change in the average number of goals scored by the teams playing away from Home, while the fact that the Home Advantage recovered shows that for a team playing at Home after Covid, they made 16% more goals compared to playing Away before Covid as $e^{0.19 - 0.05 + 0.01} - 1 \approx 0.16$.
+We also conclude that during Covid, the teams were making 6% more goals on average than before Covid, regardless of venue as $e^{0.06} - 1 \approx 0.06$. Similarly, after Covid, we do not see a significant change in the average number of goals scored by the teams playing away from Home, while the fact that the Home Advantage recovered shows that for a team playing at Home after Covid, they made 16% more goals compared to playing Away before Covid as $e^{0.19 - 0.05 + 0.01} - 1 \approx 0.16$. 
 
 ## Diagnostics
 
@@ -163,7 +163,7 @@ We see from Figure 1 the data contains too many small values, i.e. values less t
 
 First, we sample parameters from their respective confidence intervals and then use them to make predictions regarding the number of Goals. Next, we fit the model and compare the residual deviance of the model fitted to the bootstrap data and the residual deviance of the model fitted to the actual data.
 
-We observe that the p-value is quite large(0.71) and thus, we can say confidently that the model is able to adequately capture the underlying patterns in the data and the inference that Covid reduced the Home advantage in valid. This is in spite of our assumption that the scores in each match are independent realisations of Poisson Random Variables.
+We observe that the p-value is quite large(0.71) and thus, we can say confidently that the model is able to adequately capture the underlying patterns in the data and the inference that Covid reduced the Home advantage in valid. This is in spite of our assumption that the scores in each match are independent realisations of Poisson Random Variables. Lastly, we tried to do this same procedure for Teams which were in all the seasons of the league and found out that the effect size was similar with a somewhat reduced but still arge p value. Thus, we can conclude that the Home effect did indeed reduce during covid.
 ```{r, echo = FALSE, warning=FALSE, include = FALSE}
 library(MASS)
 library(car)
@@ -196,7 +196,27 @@ subset = helper2[helper2$Attack %in% teams, ]
 subset = subset[subset$Defence %in% teams, ]
 subset_noeffect = glm(Goals ~ Attack + Defence + Home + Covid  -1, data = subset, family = 'poisson')
 subset_effect  = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = subset, family = 'poisson')
+library(MASS)
+library(car)
+set.seed(0)
+CI_table = confint(subset_effect)
+CI_table = as.data.frame(CI_table)
+CI_table[,3] = 0.5*(CI_table[,2] - CI_table[,1])
+CI_table[,4] = 0.5*(CI_table[,2] + CI_table[,1])
+N = 1000
+temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = diag(CI_table[,3]**2))
+#temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = vcov(effect))#temptemp$cov.scaled for temptemp = summary(effectallseasons)
 
+Boot_threshold = subset_effect$deviance/2744  #it is res deg of freedom
+Boot_stat = rep(0, N)
+temp_data = subset
+X_matrix = model.matrix(subset_effect)
+for(i in 1:N){
+  temp_data$Goals = rpois(nrow(temp_data), exp(X_matrix %*% temp_params[i,]))
+  effect_allseasons_boot = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = temp_data, family = 'poisson')
+ Boot_stat[i] = effect_allseasons_boot$deviance/2744 #it is res deg of freedom
+  }
+sum(Boot_stat>Boot_threshold)/N
 
 ```
 
