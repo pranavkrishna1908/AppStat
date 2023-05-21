@@ -50,7 +50,6 @@ We look at the structure of the data -
 str(Data)
 ```
 
-
 ## Exploration of the Data
 
 First, we discuss the date-related features. These are the Month, Weekend and Special Day. 
@@ -123,7 +122,7 @@ Lastly, we observe that we have data regarding miscellaneous features like Opera
 
 ## Statistical Analysis
 
-We start with a first model containing all the covariates and use the BIC for prelimnary feature selection. We use the stepAIC function in the MASS package to arrive at the second model 
+We start with a first model containing all the covariates and use the BIC for preliminary feature selection. We use the stepAIC function in the MASS package to arrive at the second model 
 ```{r pressure, include=FALSE}
 model1 = glm(purchase~.-1, data = Data, family=binomial)
 model2 = stepAIC(model1, k = log(nrow(Data)), direction = 'both')
@@ -295,7 +294,7 @@ pivot_longer(-res)%>% ggplot(aes(y=res,x=value)) +
 facet_wrap(~ name, scales = "free") + geom_point() + geom_smooth()
 ```
 
-Lastly, we look at the diagnostic plot of Leverage vs Cook's distance for model 7 and observe hat the model has a satisfactory fit to the data. While there is a high leverage point, it has a low cooks Distance and overall, the residuals are tightly within the thumb rule of the Cook's distance 0.5 or 1. 
+Lastly, we look at the diagnostic plot of Leverage vs Cook's distance for model 7 and observe hat the model has a satisfactory fit to the data. While there is one high leverage point, it has a low cooks Distance and overall, the residuals are tightly within the thumb rule of the Cook's distance 0.5 or 1. We remark that when we looked at the Cook's distance with the threshold $\frac{8}{n - 2p}$, we remark that quite a few values were above the threshold. Thus, we cannot say that the model is adequately fitted to the data. Since the aim of this project is prediction, we choose to not explore this further.
 
 ```{r, echo =FALSE}
 plot(model7, which = 5)

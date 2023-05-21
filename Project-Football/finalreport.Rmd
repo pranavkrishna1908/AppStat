@@ -86,7 +86,6 @@ first_plot
 In Figure 1, we see that most matches end up with at least one goal by each team and the number of matches where we have more than 3 goals for both the teams is much lower. Also, we remark that even though the figure looks symmetric about the diagonal, in principle, there is no reason why it has to be so. We have plotted each match once, and there is no reason to expect that there is another match wherein the scores of the teams are reversed.
 
 ```{r plot2, echo=FALSE, warning=FALSE}
-options(warn=-1)
 ggplot(helper2) +
   geom_histogram(aes(x = Goals, fill = Home), position = 'dodge') +
   xlab('Goals Scored') +
@@ -124,8 +123,8 @@ $$
 where $\alpha_i$ denotes the 'Attack' capability of Team $i$ and $\beta_j$ denotes the 'Defence" capability of Team $j$' and the indicator for Home is 1 if theam $i$ is at home and 0 otherwise. 
 
 ```{r models_all, include = FALSE}
-no_effect = glm(Goals ~ Attack + Defence + Home + Covid -1, data = helper2, family = 'poisson')
-effect = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = helper2, family = 'poisson')
+no_effect = glm(Goals ~ Attack + Defence + Home + Covid , data = helper2, family = 'poisson')
+effect = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid , data = helper2, family = 'poisson')
 plot(effect)
 anova(no_effect, effect, test = 'LRT')
 #use print(xtable(temp$coefficients[,c(1,2)]), type = 'html') with temp = summary(effect)
@@ -165,125 +164,126 @@ First, we sample parameters from their respective confidence intervals and then 
 
 We observe that the p-value is quite large(0.71) and thus, we can say confidently that the model is able to adequately capture the underlying patterns in the data and the inference that Covid reduced the Home advantage in valid. This is in spite of our assumption that the scores in each match are independent realisations of Poisson Random Variables. Lastly, we tried to do this same procedure for Teams which were in all the seasons of the league and found out that the effect size was similar with a somewhat reduced but still arge p value. Thus, we can conclude that the Home effect did indeed reduce during covid.
 ```{r, echo = FALSE, warning=FALSE, include = FALSE}
-library(MASS)
-library(car)
-set.seed(0)
-CI_table = confint(effect)
-CI_table = as.data.frame(CI_table)
-CI_table[,3] = 0.5*(CI_table[,2] - CI_table[,1])
-CI_table[,4] = 0.5*(CI_table[,2] + CI_table[,1])
-N = 1000
-temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = diag(CI_table[,3]**2))
-#temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = vcov(effect))#temptemp$cov.scaled for temptemp = summary(effectallseasons)
-
-Boot_threshold = effect$deviance/2744  #it is res deg of freedom
-Boot_stat = rep(0, N)
-temp_data = helper2
-X_matrix = model.matrix(effect)
-for(i in 1:N){
-  temp_data$Goals = rpois(nrow(temp_data), exp(X_matrix %*% temp_params[i,]))
-  effect_allseasons_boot = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = temp_data, family = 'poisson')
- Boot_stat[i] = effect_allseasons_boot$deviance/2744 #it is res deg of freedom
-  }
-sum(Boot_stat>Boot_threshold)/N
+# library(MASS)
+# library(car)
+# set.seed(0)
+# CI_table = confint(effect)
+# CI_table = as.data.frame(CI_table)
+# CI_table[,3] = 0.5*(CI_table[,2] - CI_table[,1])
+# CI_table[,4] = 0.5*(CI_table[,2] + CI_table[,1])
+# N = 1000
+# temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = diag(CI_table[,3]**2))
+# #temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = vcov(effect))#temptemp$cov.scaled for temptemp = summary(effectallseasons)
+# 
+# Boot_threshold = effect$deviance/2744  #it is res deg of freedom
+# Boot_stat = rep(0, N)
+# temp_data = helper2
+# X_matrix = model.matrix(effect)
+# for(i in 1:N){
+#   temp_data$Goals = rpois(nrow(temp_data), exp(X_matrix %*% temp_params[i,]))
+#   effect_allseasons_boot = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = temp_data, family = 'poisson')
+#  Boot_stat[i] = effect_allseasons_boot$deviance/2744 #it is res deg of freedom
+#   }
+# sum(Boot_stat>Boot_threshold)/N
 ```
 
 
 ```{r, include=FALSE}
 #Lastly, we try to check if this covid adjustment of the Home Advantage effect is due to the performance of a few teams or if it a general effect. 
-teams = Reduce(intersect, list(unique(goals18$HomeTeam), unique(goals19$HomeTeam), unique(goals20$HomeTeam), unique(goals21$HomeTeam)))
-subset = helper2[helper2$Attack %in% teams, ]
-subset = subset[subset$Defence %in% teams, ]
-subset_noeffect = glm(Goals ~ Attack + Defence + Home + Covid  -1, data = subset, family = 'poisson')
-subset_effect  = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = subset, family = 'poisson')
-library(MASS)
-library(car)
-set.seed(0)
-CI_table = confint(subset_effect)
-CI_table = as.data.frame(CI_table)
-CI_table[,3] = 0.5*(CI_table[,2] - CI_table[,1])
-CI_table[,4] = 0.5*(CI_table[,2] + CI_table[,1])
-N = 1000
-temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = diag(CI_table[,3]**2))
-#temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = vcov(effect))#temptemp$cov.scaled for temptemp = summary(effectallseasons)
-
-Boot_threshold = subset_effect$deviance/2744  #it is res deg of freedom
-Boot_stat = rep(0, N)
-temp_data = subset
-X_matrix = model.matrix(subset_effect)
-for(i in 1:N){
-  temp_data$Goals = rpois(nrow(temp_data), exp(X_matrix %*% temp_params[i,]))
-  effect_allseasons_boot = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = temp_data, family = 'poisson')
- Boot_stat[i] = effect_allseasons_boot$deviance/2744 #it is res deg of freedom
-  }
-sum(Boot_stat>Boot_threshold)/N
+# teams = Reduce(intersect, list(unique(goals18$HomeTeam), unique(goals19$HomeTeam), unique(goals20$HomeTeam), unique(goals21$HomeTeam)))
+# subset = helper2[helper2$Attack %in% teams, ]
+# subset = subset[subset$Defence %in% teams, ]
+# subset_noeffect = glm(Goals ~ Attack + Defence + Home + Covid  -1, data = subset, family = 'poisson')
+# subset_effect  = glm(Goals ~ Attack + Defence + Home + Covid + Home*Covid -1, data = subset, family = 'poisson')
+# library(MASS)
+# library(car)
+# set.seed(0)
+# CI_table = confint(subset_effect)
+# CI_table = as.data.frame(CI_table)
+# CI_table[,3] = 0.5*(CI_table[,2] - CI_table[,1])
+# CI_table[,4] = 0.5*(CI_table[,2] + CI_table[,1])
+# N = 1000
+# temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = diag(CI_table[,3]**2))
+# #temp_params = mvrnorm(n = N, mu = CI_table[,4], Sigma = vcov(effect))#temptemp$cov.scaled for temptemp = summary(effectallseasons)
+# 
+# Boot_threshold = subset_effect$deviance/2744  #it is res deg of freedom
+# Boot_stat = rep(0, N)
+# temp_data = subset
+# X_matrix = model.matrix(subset_effect)
+# for(i in 1:N){
+#   temp_data$Goals = rpois(nrow(temp_data), exp(X_matrix %*% temp_params[i,]))
+#   effect_allseasons_boot = glm(Goals ~ Attack + Defence + Home + Covid + Home:Covid -1, data = temp_data, family = 'poisson')
+#  Boot_stat[i] = effect_allseasons_boot$deviance/2744 #it is res deg of freedom
+#   }
+# sum(Boot_stat>Boot_threshold)/N
 
 ```
 
 
 ## Appendix
-All coefficients of the model 
+
+We remark that due to theoretical reasons, we need to fit this model with the intercept. If we do not, the likelihood theory from the multinomial perspective of looking at the contingency table does not lead to accurate coefficients in the model.
+
 <!-- html table generated in R 4.2.1 by xtable 1.8-4 package -->
 <!-- Fri Mar 31 13:50:02 2023 -->
 <table border=1>
 <caption style="font-weight: bold">Table 2 : All  Coefficients</caption>
-<!-- html table generated in R 4.2.1 by xtable 1.8-4 package -->
-<!-- Fri Mar 31 13:55:21 2023 -->
-<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th> <th> z value </th> <th> Pr(&gt;|z|) </th>  </tr>
-  <tr> <td align="right"> AttackArsenal </td> <td align="right"> 0.277 </td> <td align="right"> 0.108 </td> <td align="right"> 2.571 </td> <td align="right"> 0.010 </td> </tr>
-  <tr> <td align="right"> AttackAston Villa </td> <td align="right"> 0.144 </td> <td align="right"> 0.119 </td> <td align="right"> 1.210 </td> <td align="right"> 0.226 </td> </tr>
-  <tr> <td align="right"> AttackBournemouth </td> <td align="right"> 0.037 </td> <td align="right"> 0.135 </td> <td align="right"> 0.274 </td> <td align="right"> 0.784 </td> </tr>
-  <tr> <td align="right"> AttackBrentford </td> <td align="right"> 0.051 </td> <td align="right"> 0.170 </td> <td align="right"> 0.302 </td> <td align="right"> 0.762 </td> </tr>
-  <tr> <td align="right"> AttackBrighton </td> <td align="right"> -0.141 </td> <td align="right"> 0.116 </td> <td align="right"> -1.216 </td> <td align="right"> 0.224 </td> </tr>
-  <tr> <td align="right"> AttackBurnley </td> <td align="right"> -0.172 </td> <td align="right"> 0.117 </td> <td align="right"> -1.477 </td> <td align="right"> 0.140 </td> </tr>
-  <tr> <td align="right"> AttackCardiff </td> <td align="right"> -0.321 </td> <td align="right"> 0.189 </td> <td align="right"> -1.700 </td> <td align="right"> 0.089 </td> </tr>
-  <tr> <td align="right"> AttackChelsea </td> <td align="right"> 0.333 </td> <td align="right"> 0.104 </td> <td align="right"> 3.216 </td> <td align="right"> 0.001 </td> </tr>
-  <tr> <td align="right"> AttackCrystal Palace </td> <td align="right"> -0.028 </td> <td align="right"> 0.112 </td> <td align="right"> -0.251 </td> <td align="right"> 0.802 </td> </tr>
-  <tr> <td align="right"> AttackEverton </td> <td align="right"> 0.049 </td> <td align="right"> 0.111 </td> <td align="right"> 0.446 </td> <td align="right"> 0.655 </td> </tr>
-  <tr> <td align="right"> AttackFulham </td> <td align="right"> -0.399 </td> <td align="right"> 0.152 </td> <td align="right"> -2.623 </td> <td align="right"> 0.009 </td> </tr>
-  <tr> <td align="right"> AttackHuddersfield </td> <td align="right"> -0.751 </td> <td align="right"> 0.228 </td> <td align="right"> -3.299 </td> <td align="right"> 0.001 </td> </tr>
-  <tr> <td align="right"> AttackLeeds </td> <td align="right"> 0.156 </td> <td align="right"> 0.131 </td> <td align="right"> 1.194 </td> <td align="right"> 0.233 </td> </tr>
-  <tr> <td align="right"> AttackLeicester </td> <td align="right"> 0.325 </td> <td align="right"> 0.104 </td> <td align="right"> 3.116 </td> <td align="right"> 0.002 </td> </tr>
-  <tr> <td align="right"> AttackLiverpool </td> <td align="right"> 0.586 </td> <td align="right"> 0.099 </td> <td align="right"> 5.908 </td> <td align="right"> 0.000 </td> </tr>
-  <tr> <td align="right"> AttackMan City </td> <td align="right"> 0.689 </td> <td align="right"> 0.098 </td> <td align="right"> 7.043 </td> <td align="right"> 0.000 </td> </tr>
-  <tr> <td align="right"> AttackMan United </td> <td align="right"> 0.318 </td> <td align="right"> 0.104 </td> <td align="right"> 3.053 </td> <td align="right"> 0.002 </td> </tr>
-  <tr> <td align="right"> AttackNewcastle </td> <td align="right"> -0.079 </td> <td align="right"> 0.114 </td> <td align="right"> -0.696 </td> <td align="right"> 0.487 </td> </tr>
-  <tr> <td align="right"> AttackNorwich </td> <td align="right"> -0.474 </td> <td align="right"> 0.168 </td> <td align="right"> -2.824 </td> <td align="right"> 0.005 </td> </tr>
-  <tr> <td align="right"> AttackSheffield United </td> <td align="right"> -0.460 </td> <td align="right"> 0.166 </td> <td align="right"> -2.768 </td> <td align="right"> 0.006 </td> </tr>
-  <tr> <td align="right"> AttackSouthampton </td> <td align="right"> 0.004 </td> <td align="right"> 0.112 </td> <td align="right"> 0.032 </td> <td align="right"> 0.974 </td> </tr>
-  <tr> <td align="right"> AttackTottenham </td> <td align="right"> 0.366 </td> <td align="right"> 0.103 </td> <td align="right"> 3.538 </td> <td align="right"> 0.000 </td> </tr>
-  <tr> <td align="right"> AttackWatford </td> <td align="right"> -0.116 </td> <td align="right"> 0.125 </td> <td align="right"> -0.931 </td> <td align="right"> 0.352 </td> </tr>
-  <tr> <td align="right"> AttackWest Brom </td> <td align="right"> -0.217 </td> <td align="right"> 0.191 </td> <td align="right"> -1.133 </td> <td align="right"> 0.257 </td> </tr>
-  <tr> <td align="right"> AttackWest Ham </td> <td align="right"> 0.188 </td> <td align="right"> 0.107 </td> <td align="right"> 1.750 </td> <td align="right"> 0.080 </td> </tr>
-  <tr> <td align="right"> AttackWolves </td> <td align="right"> -0.087 </td> <td align="right"> 0.114 </td> <td align="right"> -0.759 </td> <td align="right"> 0.448 </td> </tr>
-  <tr> <td align="right"> DefenceAston Villa </td> <td align="right"> 0.166 </td> <td align="right"> 0.112 </td> <td align="right"> 1.485 </td> <td align="right"> 0.137 </td> </tr>
-  <tr> <td align="right"> DefenceBournemouth </td> <td align="right"> 0.337 </td> <td align="right"> 0.124 </td> <td align="right"> 2.724 </td> <td align="right"> 0.006 </td> </tr>
-  <tr> <td align="right"> DefenceBrentford </td> <td align="right"> 0.142 </td> <td align="right"> 0.157 </td> <td align="right"> 0.909 </td> <td align="right"> 0.363 </td> </tr>
-  <tr> <td align="right"> DefenceBrighton </td> <td align="right"> 0.061 </td> <td align="right"> 0.106 </td> <td align="right"> 0.576 </td> <td align="right"> 0.565 </td> </tr>
-  <tr> <td align="right"> DefenceBurnley </td> <td align="right"> 0.194 </td> <td align="right"> 0.102 </td> <td align="right"> 1.889 </td> <td align="right"> 0.059 </td> </tr>
-  <tr> <td align="right"> DefenceCardiff </td> <td align="right"> 0.368 </td> <td align="right"> 0.144 </td> <td align="right"> 2.558 </td> <td align="right"> 0.011 </td> </tr>
-  <tr> <td align="right"> DefenceChelsea </td> <td align="right"> -0.178 </td> <td align="right"> 0.113 </td> <td align="right"> -1.574 </td> <td align="right"> 0.115 </td> </tr>
-  <tr> <td align="right"> DefenceCrystal Palace </td> <td align="right"> 0.116 </td> <td align="right"> 0.105 </td> <td align="right"> 1.112 </td> <td align="right"> 0.266 </td> </tr>
-  <tr> <td align="right"> DefenceEverton </td> <td align="right"> 0.125 </td> <td align="right"> 0.104 </td> <td align="right"> 1.193 </td> <td align="right"> 0.233 </td> </tr>
-  <tr> <td align="right"> DefenceFulham </td> <td align="right"> 0.343 </td> <td align="right"> 0.116 </td> <td align="right"> 2.956 </td> <td align="right"> 0.003 </td> </tr>
-  <tr> <td align="right"> DefenceHuddersfield </td> <td align="right"> 0.453 </td> <td align="right"> 0.139 </td> <td align="right"> 3.255 </td> <td align="right"> 0.001 </td> </tr>
-  <tr> <td align="right"> DefenceLeeds </td> <td align="right"> 0.342 </td> <td align="right"> 0.117 </td> <td align="right"> 2.927 </td> <td align="right"> 0.003 </td> </tr>
-  <tr> <td align="right"> DefenceLeicester </td> <td align="right"> 0.058 </td> <td align="right"> 0.106 </td> <td align="right"> 0.549 </td> <td align="right"> 0.583 </td> </tr>
-  <tr> <td align="right"> DefenceLiverpool </td> <td align="right"> -0.473 </td> <td align="right"> 0.124 </td> <td align="right"> -3.818 </td> <td align="right"> 0.000 </td> </tr>
-  <tr> <td align="right"> DefenceMan City </td> <td align="right"> -0.418 </td> <td align="right"> 0.122 </td> <td align="right"> -3.420 </td> <td align="right"> 0.001 </td> </tr>
-  <tr> <td align="right"> DefenceMan United </td> <td align="right"> 0.066 </td> <td align="right"> 0.106 </td> <td align="right"> 0.617 </td> <td align="right"> 0.537 </td> </tr>
-  <tr> <td align="right"> DefenceNewcastle </td> <td align="right"> 0.186 </td> <td align="right"> 0.103 </td> <td align="right"> 1.806 </td> <td align="right"> 0.071 </td> </tr>
-  <tr> <td align="right"> DefenceNorwich </td> <td align="right"> 0.456 </td> <td align="right"> 0.117 </td> <td align="right"> 3.911 </td> <td align="right"> 0.000 </td> </tr>
-  <tr> <td align="right"> DefenceSheffield United </td> <td align="right"> 0.058 </td> <td align="right"> 0.132 </td> <td align="right"> 0.442 </td> <td align="right"> 0.659 </td> </tr>
-  <tr> <td align="right"> DefenceSouthampton </td> <td align="right"> 0.341 </td> <td align="right"> 0.099 </td> <td align="right"> 3.436 </td> <td align="right"> 0.001 </td> </tr>
-  <tr> <td align="right"> DefenceTottenham </td> <td align="right"> -0.088 </td> <td align="right"> 0.110 </td> <td align="right"> -0.798 </td> <td align="right"> 0.425 </td> </tr>
-  <tr> <td align="right"> DefenceWatford </td> <td align="right"> 0.314 </td> <td align="right"> 0.108 </td> <td align="right"> 2.914 </td> <td align="right"> 0.004 </td> </tr>
-  <tr> <td align="right"> DefenceWest Brom </td> <td align="right"> 0.482 </td> <td align="right"> 0.141 </td> <td align="right"> 3.417 </td> <td align="right"> 0.001 </td> </tr>
-  <tr> <td align="right"> DefenceWest Ham </td> <td align="right"> 0.131 </td> <td align="right"> 0.104 </td> <td align="right"> 1.260 </td> <td align="right"> 0.208 </td> </tr>
-  <tr> <td align="right"> DefenceWolves </td> <td align="right"> -0.025 </td> <td align="right"> 0.108 </td> <td align="right"> -0.236 </td> <td align="right"> 0.814 </td> </tr>
-  <tr> <td align="right"> Home1 </td> <td align="right"> 0.194 </td> <td align="right"> 0.048 </td> <td align="right"> 4.093 </td> <td align="right"> 0.000 </td> </tr>
-  <tr> <td align="right"> CovidIn </td> <td align="right"> 0.056 </td> <td align="right"> 0.060 </td> <td align="right"> 0.925 </td> <td align="right"> 0.355 </td> </tr>
-  <tr> <td align="right"> CovidLater </td> <td align="right"> 0.008 </td> <td align="right"> 0.060 </td> <td align="right"> 0.127 </td> <td align="right"> 0.899 </td> </tr>
-  <tr> <td align="right"> Home1:CovidIn </td> <td align="right"> -0.187 </td> <td align="right"> 0.079 </td> <td align="right"> -2.378 </td> <td align="right"> 0.017 </td> </tr>
-  <tr> <td align="right"> Home1:CovidLater </td> <td align="right"> -0.047 </td> <td align="right"> 0.078 </td> <td align="right"> -0.602 </td> <td align="right"> 0.547 </td> </tr>
+<table border=1>
+<tr> <th>  </th> <th> Estimate </th> <th> Std. Error </th>  </tr>
+  <tr> <td align="right"> (Intercept) </td> <td align="right"> 0.28 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> AttackAston Villa </td> <td align="right"> -0.13 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> AttackBournemouth </td> <td align="right"> -0.24 </td> <td align="right"> 0.13 </td> </tr>
+  <tr> <td align="right"> AttackBrentford </td> <td align="right"> -0.23 </td> <td align="right"> 0.16 </td> </tr>
+  <tr> <td align="right"> AttackBrighton </td> <td align="right"> -0.42 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> AttackBurnley </td> <td align="right"> -0.45 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> AttackCardiff </td> <td align="right"> -0.60 </td> <td align="right"> 0.19 </td> </tr>
+  <tr> <td align="right"> AttackChelsea </td> <td align="right"> 0.06 </td> <td align="right"> 0.09 </td> </tr>
+  <tr> <td align="right"> AttackCrystal Palace </td> <td align="right"> -0.31 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> AttackEverton </td> <td align="right"> -0.23 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> AttackFulham </td> <td align="right"> -0.68 </td> <td align="right"> 0.14 </td> </tr>
+  <tr> <td align="right"> AttackHuddersfield </td> <td align="right"> -1.03 </td> <td align="right"> 0.22 </td> </tr>
+  <tr> <td align="right"> AttackLeeds </td> <td align="right"> -0.12 </td> <td align="right"> 0.12 </td> </tr>
+  <tr> <td align="right"> AttackLeicester </td> <td align="right"> 0.05 </td> <td align="right"> 0.09 </td> </tr>
+  <tr> <td align="right"> AttackLiverpool </td> <td align="right"> 0.31 </td> <td align="right"> 0.09 </td> </tr>
+  <tr> <td align="right"> AttackMan City </td> <td align="right"> 0.41 </td> <td align="right"> 0.09 </td> </tr>
+  <tr> <td align="right"> AttackMan United </td> <td align="right"> 0.04 </td> <td align="right"> 0.09 </td> </tr>
+  <tr> <td align="right"> AttackNewcastle </td> <td align="right"> -0.36 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> AttackNorwich </td> <td align="right"> -0.75 </td> <td align="right"> 0.16 </td> </tr>
+  <tr> <td align="right"> AttackSheffield United </td> <td align="right"> -0.74 </td> <td align="right"> 0.16 </td> </tr>
+  <tr> <td align="right"> AttackSouthampton </td> <td align="right"> -0.27 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> AttackTottenham </td> <td align="right"> 0.09 </td> <td align="right"> 0.09 </td> </tr>
+  <tr> <td align="right"> AttackWatford </td> <td align="right"> -0.39 </td> <td align="right"> 0.12 </td> </tr>
+  <tr> <td align="right"> AttackWest Brom </td> <td align="right"> -0.49 </td> <td align="right"> 0.18 </td> </tr>
+  <tr> <td align="right"> AttackWest Ham </td> <td align="right"> -0.09 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> AttackWolves </td> <td align="right"> -0.36 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> DefenceAston Villa </td> <td align="right"> 0.17 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> DefenceBournemouth </td> <td align="right"> 0.34 </td> <td align="right"> 0.12 </td> </tr>
+  <tr> <td align="right"> DefenceBrentford </td> <td align="right"> 0.14 </td> <td align="right"> 0.16 </td> </tr>
+  <tr> <td align="right"> DefenceBrighton </td> <td align="right"> 0.06 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> DefenceBurnley </td> <td align="right"> 0.19 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> DefenceCardiff </td> <td align="right"> 0.37 </td> <td align="right"> 0.14 </td> </tr>
+  <tr> <td align="right"> DefenceChelsea </td> <td align="right"> -0.18 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> DefenceCrystal Palace </td> <td align="right"> 0.12 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> DefenceEverton </td> <td align="right"> 0.12 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> DefenceFulham </td> <td align="right"> 0.34 </td> <td align="right"> 0.12 </td> </tr>
+  <tr> <td align="right"> DefenceHuddersfield </td> <td align="right"> 0.45 </td> <td align="right"> 0.14 </td> </tr>
+  <tr> <td align="right"> DefenceLeeds </td> <td align="right"> 0.34 </td> <td align="right"> 0.12 </td> </tr>
+  <tr> <td align="right"> DefenceLeicester </td> <td align="right"> 0.06 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> DefenceLiverpool </td> <td align="right"> -0.47 </td> <td align="right"> 0.12 </td> </tr>
+  <tr> <td align="right"> DefenceMan City </td> <td align="right"> -0.42 </td> <td align="right"> 0.12 </td> </tr>
+  <tr> <td align="right"> DefenceMan United </td> <td align="right"> 0.07 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> DefenceNewcastle </td> <td align="right"> 0.19 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> DefenceNorwich </td> <td align="right"> 0.46 </td> <td align="right"> 0.12 </td> </tr>
+  <tr> <td align="right"> DefenceSheffield United </td> <td align="right"> 0.06 </td> <td align="right"> 0.13 </td> </tr>
+  <tr> <td align="right"> DefenceSouthampton </td> <td align="right"> 0.34 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> DefenceTottenham </td> <td align="right"> -0.09 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> DefenceWatford </td> <td align="right"> 0.31 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> DefenceWest Brom </td> <td align="right"> 0.48 </td> <td align="right"> 0.14 </td> </tr>
+  <tr> <td align="right"> DefenceWest Ham </td> <td align="right"> 0.13 </td> <td align="right"> 0.10 </td> </tr>
+  <tr> <td align="right"> DefenceWolves </td> <td align="right"> -0.03 </td> <td align="right"> 0.11 </td> </tr>
+  <tr> <td align="right"> Home1 </td> <td align="right"> 0.19 </td> <td align="right"> 0.05 </td> </tr>
+  <tr> <td align="right"> CovidIn </td> <td align="right"> 0.06 </td> <td align="right"> 0.06 </td> </tr>
+  <tr> <td align="right"> CovidLater </td> <td align="right"> 0.01 </td> <td align="right"> 0.06 </td> </tr>
+  <tr> <td align="right"> Home1:CovidIn </td> <td align="right"> -0.19 </td> <td align="right"> 0.08 </td> </tr>
+  <tr> <td align="right"> Home1:CovidLater </td> <td align="right"> -0.05 </td> <td align="right"> 0.08 </td> </tr>
    </table>

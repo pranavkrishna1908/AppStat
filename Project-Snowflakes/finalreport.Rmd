@@ -18,7 +18,6 @@ head(snowdata)
 ```
 
 
-We see a bi-modal distribution on making a histogram of the data.
 
 ```{r cars, include=FALSE, warnings=FALSE}
 library(ggplot2)
@@ -50,9 +49,10 @@ hist_plot = ggplot()+
 hist_plot
 ```
 
-From expert knowledge, we know that the data is supposed to be a mixture of two log-normal distributions. This is  not contrary to the data as it is bi modal, as seen in FIgure 1. Furthermore, we see that the data is non-negative. Thus, a mixture of two log-normal densities can be a good model for the data.
+We see a bi-modal distribution on making a histogram of the data. From expert knowledge, we know that the data is supposed to be a mixture of two log-normal distributions. This is  not contrary to the data as it is bi modal, as seen in FIgure 1. Furthermore, we see that the data is non-negative. Thus, a mixture of two log-normal densities can be a good model for the data.
 
 # Methodology
+
 We intend to fit a mixture of two log normal distributions to this data. We recognise that the data is binned and we do not have access to the samples that generated this data. First we add randomness to the data by simulating the required number of points uniformly at random in each interval. We choose to do this uniformly and not from the normal distribution as using the normal distribution can lead to sample values possibly outside the corresponding interval. Thus, using the uniform distribution is more appropriate.
 
 Now, we use the EM algorithm to fit the points to this selection of points to get s set of parameters. For this algorithm, we pretend as if this selection of points was indeed the sample and use the corresponding density which is $$f(x) = 
