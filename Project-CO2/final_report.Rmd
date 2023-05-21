@@ -264,7 +264,7 @@ R_struct2 <- corARMA(form=~t, p=3, q = 1) # ARMA(2,1) correlation structure
 glsfit_final <- gls(value~t+month + I(t^2) , data=lmData, corr=R_struct, method = 'ML')
 ```
 
-We do a model submodel test with and without the exponential term and find that the p-value is 0.27. This suggests that the exponential trend is not significant and the data is adequately modeled using a quadratic trend. We tried to change the coefficient to 500 in the Time scaling for the exponential term and still realised that it was still not significant.  Thus, we can comfortably say that the there is not enough evidence in the data for an exponential trend.
+We do a model-submodel test with and without the exponential term and find that the p-value is 0.27. This suggests that the exponential trend is not significant and the data is adequately modeled using a quadratic trend. We tried to change the coefficient to 500 in the Time scaling for the exponential term and still realised that it was still not significant.  Thus, we can comfortably say that the there is not enough evidence in the data for an exponential trend. We also remark that we have to fit the models using the ML approach as using ReML would make us unable to use the model-submodel tests.
 
 When we tried to remove the month as a covariate, we got a p-value of 0.0004 which clearly suggests that the month is an important covariate for the temperature anomalies. Thus, the  model we have is as follows -
 
@@ -307,7 +307,7 @@ We saw in the previous section that there is not enough evidence in the data to 
 
 ## Appendix
 
-In this section, we explain how we decided on a ARMA(2,2) dependence structure for the residuals in the Regression approach. We first look the residuals from fitting a Linear model with the quadratic, exponential, linear and month covariates and observe some dependence in the residuals in Figure 7. We see some dependence in the residuals and some residuals are even 4sd away from the predicted value. In Figure 8, we see that the AR component is clearly 2, while the ACF in figure 9 falls down slowly due to these AR components. We decide to keep an MA component of 1 for simplicity. Lastly, we remark that this choice is close o optimal, as the autoarima function gives us a ARIMA(1,0,1) model without the mean. Thus, the ARMA(2,1) dependence structure we assume is justified.
+In this section, we explain how we decided on a ARMA(2,1) dependence structure for the residuals in the Regression approach. We first look the residuals from fitting a Linear model with the quadratic, exponential, linear and month covariates and observe some dependence in the residuals in Figure 7. We see some dependence in the residuals and some residuals are even 4sd away from the predicted value. In Figure 8, we see that the AR component is clearly 2, while the ACF in figure 9 falls down slowly due to these AR components. We decide to keep an MA component of 1 for simplicity. Lastly, we remark that this choice is close o optimal, as the autoarima function gives us a ARIMA(1,0,1) model without the mean. Thus, the ARMA(2,1) dependence structure we assume is justified.
 ```{r, echo = FALSE}
 lmfit1 <- lm(value~t+month + I(t^2) + exp(t/100), data=lmData)
 autoplot(ts(scale(lmfit1$residuals), start = 1880,frequency = 12))+ ylab('Standardised Residuals')+ggtitle('Figure 7: Standardised Residuals for Linear Model with Uncorrelated Errors')
