@@ -15,9 +15,9 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r cars}
-# library(tidyverse)
-# library(readr)
-# covid_deaths_usafacts <- read_csv("covid_deaths_usafacts.csv")
+library(tidyverse)
+library(readr)
+covid_deaths_usafacts <- read_csv("covid_deaths_usafacts.csv")
 data <- covid_deaths_usafacts[, !colnames(covid_deaths_usafacts) %in% c("countyFIPS", "County Name", "StateFIPS")]
 statewise_data = data %>% 
   group_by(State) %>% 
@@ -49,9 +49,9 @@ deaths_threshold = 2
 count_data_fewdays = apply(data_daily, 2,
                            function(coloumn)
                           coloumn[which(coloumn>deaths_threshold)[1]:(which(coloumn>deaths_threshold)[1] + 60)] )
-cumultaive = apply(count_data_fewdays, 2, function(column) cumsum(column))
-percapita = apply(cumultaive , 1, function(row) row/populations)
-final = apply(cumultaive,2, function(col) predict(smooth.spline(col))$y )
+
+percapita = apply(count_data_fewdays , 1, function(row) row/populations)
+final = apply(percapita,2, function(col) predict(smooth.spline(col))$y )
 
 logged_cmulative = apply(cumultaive, 2, function(row) log(row, base =2))
 data_prepared = t(logged_cmulative)
@@ -86,9 +86,65 @@ print(var_explained[1])
 ```
 ## now, make plts
 ```{r}
-plot(logged_cmulative[,5], type = 'l')
+#was plotting the wrong dimension
+plot_this = logged_cmulative
+plot(plot_this[,5], type = 'l')
 for(i in 2:51){
-  points(logged_cmulative[,i], col = i, type = 'l')
+  points(plot_this[,i], col = i, type = 'l')
 }
+```
+
+
+
+
+```{r}
+perform_pca <- function(X){
+  mu <- colMeans(X)
+  X <- sweep(X,2,mu)
+  
+  SVD <- svd(X)
+  Scores <- SVD$u %*% diag(SVD$d)
+  Loadings <- SVD$v
+  # cat(cumsum(SVD$d^2/sum(SVD$d^2))[1:5]) # FVE
+  FVE <- SVD$d^2/sum(SVD$d^2)
+  # plot(SVD$d^2/sum(SVD$d^2), type="h")
+  
+  lam <- sqrt(length(xeval)) # measure change
+  op <- par(mfrow=c(3,2),mar=rep(2,4))
+  plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu), main="Data and the mean")
+  for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
+  points(xeval,mu,col=2,lwd=2,type="l")
+  plot(Scores[1,]*sign(sum(Loadings[,1])), Scores[2,]*sign(sum(Loadings[,2])), main="1st vs 2nd PC scores")
+  
+  plot(xeval,Loadings[,1]*sign(sum(Loadings[,1])),type="l", main=paste0("1st PC (",round(100*FVE[1])," % of var)"))
+  # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
+  # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
+  # points(xeval,mu,col=2,lwd=2,type="l")
+  # points(xeval,mu+3*SVD$d[1]/lam*SVD$v[,1],col=2,lwd=2,type="l",lty=2)
+  # points(xeval,mu-3*SVD$d[1]/lam*SVD$v[,1],col=2,lwd=2,type="l",lty=2)
+  
+  plot(xeval,Loadings[,2]*sign(sum(Loadings[,2])),type="l", main=paste0("2nd PC (",round(100*FVE[2])," % of var)"))
+  # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
+  # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
+  # points(xeval,mu,col=2,lwd=2,type="l")
+  # points(xeval,mu+10*SVD$d[2]/lam*SVD$v[,2],col=2,lwd=2,type="l",lty=2)
+  # points(xeval,mu-10*SVD$d[2]/lam*SVD$v[,2],col=2,lwd=2,type="l",lty=2)
+  
+  plot(xeval,Loadings[,3]*sign(sum(Loadings[,3])),type="l", main=paste0("3rd PC (",round(100*FVE[3])," % of var)"))
+  # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
+  # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
+  # points(xeval,mu,col=2,lwd=2,type="l")
+  # points(xeval,mu+30*SVD$d[3]/lam*SVD$v[,3],col=2,lwd=2,type="l",lty=2)
+  # points(xeval,mu-30*SVD$d[3]/lam*SVD$v[,3],col=2,lwd=2,type="l",lty=2)
+  
+  plot(xeval,Loadings[,4]*sign(sum(Loadings[,4])),type="l", main=paste0("4th PC (",round(100*FVE[4])," % of var)"))
+  # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
+  # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
+  # points(xeval,mu,col=2,lwd=2,type="l")
+  # points(xeval,mu+30*SVD$d[4]/lam*SVD$v[,4],col=2,lwd=2,type="l",lty=2)
+  # points(xeval,mu-30*SVD$d[4]/lam*SVD$v[,4],col=2,lwd=2,type="l",lty=2)
+}
+perform_pca(PCA_data) # t() so that individuals are rows
+# perform_pca(t(mal_height))
 ```
 
