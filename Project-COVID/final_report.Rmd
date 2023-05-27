@@ -12,10 +12,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 In this project, we look at the spread of COVID-19 in the United States in the first wave. We explore the Data using PCA and report our exploratory findings. We recall that the response to the pandemic was fragmented, even in the initial stages of the pandemic, wherein all states had slightly different degrees of stay at home, face covering and travel restrictions which were implemented at different points of time. Thus, we restrict ourselves to exploratory data analysis on this data-set.
 
+The data we have is regarding the cumulative number of deaths cases in USA by county. We decided to group it by state and  to threshold at 2 Deaths in each state to declare the start of the pandemic. Then, we look at the next 60 days and study the evolution of the pandemic dynamics. 
 
-The data we have is regarding the daily number of covid cases in USA by state. We decide to threshold at 2 Deaths in each state to declare the start of the pandemic and look at the next 60 days and study the evolution. 
+However, we recognise that an increase of 5 deaths at the beginning of the wave may not have the same relative impact as 5 deaths towards the end of the wave. To ensure a more comparable scale for the data, we apply a logarithmic transformation to these cumulative numbers. We apply hte PCA on this data to gather insights about the progression of the pandemic.
 
-```{r cars}
+```{r cars, echo = FALSE}
 library(tidyverse)
 library(readr)
 
@@ -24,9 +25,7 @@ data = covid_deaths_usafacts[, !colnames(covid_deaths_usafacts) %in% c("countyFI
 statewise_data = data %>%   group_by(State) %>% 
   summarize_all(sum)
 data_daily = t ( statewise_data[,-1])
-
 colnames(data_daily) = as.vector(statewise_data$State)
-
 populations = c(733583, 5074296, 3045637, 7359197, 39029342, 5839926, 3626205,
                 671803, 1018396, 22244823, 10912876, 1440196, 3200517, 1939033,
                 12582032, 6833037, 2937150, 4512310, 4590241, 6981974, 6164660, 
@@ -40,22 +39,19 @@ deaths_threshold = 2
 count_data_fewdays = apply(data_daily, 2,
                            function(coloumn)
                           coloumn[which(coloumn>deaths_threshold)[1]:(which(coloumn>deaths_threshold)[1] + 60)] )
-
 percapita = apply(count_data_fewdays , 1, function(row) row/populations)
-final = apply(percapita,2, function(col) predict(smooth.spline(col))$y )
+final = apply(percapita,1, function(row) predict(smooth.spline(row))$y )
 
-logged_cmulative = apply(cumultaive, 2, function(row) log(row, base =2))
-data_prepared = t(logged_cmulative)#states are rows now
+logged_cmulative = apply(final, 2, function(row) log(row, base =2))
+data_prepared = t(logged_cmulative)#states should be rows
 PCA_data = scale(data_prepared, center = TRUE, scale = FALSE)
-results = svd(PCA_data)
-plot(abs(results$v[,1]))
-plot(abs(results$v[,2]))
-plot(results$v[,3])
-total_d_i = sum(results$d**2)
-var_explained = 100*results$d**2/total_d_i
-print(var_explained[1])
-
-
+# results = svd(PCA_data)
+# plot(abs(results$v[,1]))
+# plot(abs(results$v[,2]))
+# plot(results$v[,3])
+# total_d_i = sum(results$d**2)
+# var_explained = 100*results$d**2/total_d_i
+# print(var_explained[1])
 ```
 
 ## Including Plots
@@ -76,7 +72,7 @@ perform_pca <- function(X){
   # plot(SVD$d^2/sum(SVD$d^2), type="h")
   
   lam <- sqrt(length(xeval)) # measure change
-  op <- par(mfrow=c(3,2),mar=rep(2,4))
+  #op <- par(mfrow=c(3,2),mar=rep(2,4))
   plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu), main="Data and the mean")
   for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
   points(xeval,mu,col=2,lwd=2,type="l")
@@ -109,11 +105,16 @@ perform_pca <- function(X){
   # points(xeval,mu,col=2,lwd=2,type="l")
   # points(xeval,mu+30*SVD$d[4]/lam*SVD$v[,4],col=2,lwd=2,type="l",lty=2)
   # points(xeval,mu-30*SVD$d[4]/lam*SVD$v[,4],col=2,lwd=2,type="l",lty=2)
+  return(SVD)
 }
-perform_pca(PCA_data) # t() so that individuals are rows
+SVD = perform_pca(PCA_data) # t() so that individuals are rows
 # perform_pca(t(mal_height))
 
 
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+
