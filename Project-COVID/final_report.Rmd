@@ -175,7 +175,7 @@ plot1 = ggplot(data = data.frame(xeval = xeval, loadings = Loadings[, 1] * sign(
 plot1 | plot2
 ```
 
-Lastly, we remark that the first two principal components explain 97% of the variability in the data and we choose to ignore the other components. The plot of PC1 vs PC2 was very tighty clustered and we choose to not look at it because it was uninformative.
+Lastly, we remark that the first two principal components explain 97% of the variability in the data and we choose to ignore the other components. The plot of PC1 vs PC2 was very tightly clustered and we choose to not present it because it was uninformative.
 
 ```{r, include = FALSE}
 library(readr)
@@ -191,4 +191,4 @@ democratic_support = democratic_data$Percentage
 
 ## Conclusion
 
-We see that the variability in the first wave of the COVID-19 pandemic is explained adequately by the first and second principal components. In our opinion, this is because of the different environments and measures taken in each state. Three is very less variability in the first few weeks wherein the transmission has not increased to high levels. In the last month of the first wave, we see a lot of variability in the evolution of the pandemic.
+We see that the variability in the first wave of the COVID-19 pandemic is explained adequately by the first and second principal components. In our opinion, this is because of the different environments and measures taken in each state. There is very less variability in the first few weeks as the transmission has not increased to high levels. In the last month of the first wave, we see a lot of variability in the evolution of the pandemic.
