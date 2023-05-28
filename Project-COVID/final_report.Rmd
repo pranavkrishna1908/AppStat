@@ -12,13 +12,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 In this project, we look at the spread of COVID-19 in the United States in the first wave. We explore the Data using PCA and report our exploratory findings. We recall that the response to the pandemic was fragmented, even in the initial stages of the pandemic, wherein all states had slightly different degrees of stay at home, face covering and travel restrictions which were implemented at different points of time. Thus, we restrict ourselves to exploratory data analysis on this data-set.
 
-The data we have is regarding the cumulative number of deaths cases in USA by county. We decided to group it by state and  to threshold at 2 Deaths in each state to declare the start of the pandemic. Then, we look at the next 60 days and study the evolution of the pandemic dynamics. 
+The data we have is regarding the cumulative number of deaths cases in USA by county from [USAfacts](https://static.usafacts.org/public/data/covid-19/covid_deaths_usafacts.csv)
+. We decided to group it by state and  to threshold at 2 Deaths in each state to declare the start of the pandemic. Then, we look at the next 60 days and study the evolution of the pandemic dynamics for per capita death. 
 
-However, we recognise that an increase of 5 deaths at the beginning of the wave may not have the same relative impact as 5 deaths towards the end of the wave. To ensure a more comparable scale for the data, we apply a logarithmic transformation to these cumulative numbers. We apply hte PCA on this data to gather insights about the progression of the pandemic.
+However, we recognise that an increase of 5 deaths at the beginning of the wave may not have the same relative impact as 5 deaths towards the end of the wave. To ensure a more comparable scale for the data, we apply a logarithmic transformation to these cumulative numbers. We apply the PCA on this data to gather insights about the progression of the pandemic.
 
 ```{r cars, include = FALSE}
 library(tidyverse)
 library(readr)
+library(patchwork)
 
 covid_deaths_usafacts <- read_csv("covid_deaths_usafacts.csv")
 data = covid_deaths_usafacts[, !colnames(covid_deaths_usafacts) %in% c("countyFIPS", "County Name", "StateFIPS")]
@@ -33,18 +35,28 @@ populations = c(733583, 5074296, 3045637, 7359197, 39029342, 5839926, 3626205,
                 10698973, 779261, 1967923, 1395231, 9261699, 2113344, 3177772 ,19677151, 
                 11756058, 4019800, 4240137, 12972008, 1093734, 5282634, 909824, 
                 7051339, 30029572, 3380800, 8683619, 647064, 7785786, 5892539,
-                1775156, 581381)
+                1775156, 581381)/100000
 ######
 deaths_threshold = 2
 count_data_fewdays = apply(data_daily, 2,
                            function(coloumn)
-                          coloumn[which(coloumn>deaths_threshold)[1]:(which(coloumn>deaths_threshold)[1] + 60)] )
+ coloumn[which(coloumn>deaths_threshold)[1]:(which(coloumn>deaths_threshold)[1] + 60)] )
 percapita = apply(count_data_fewdays , 1, function(row) row/populations)
 final = apply(percapita,1, function(row) predict(smooth.spline(row))$y )
 
 logged_cmulative = apply(final, 2, function(row) log(row, base =2))
 data_prepared = t(logged_cmulative)#states should be rows
 PCA_data = scale(data_prepared, center = TRUE, scale = FALSE)
+#########for democratic support 
+X1976_2020_president <- read_csv("1976-2020-president.csv")
+data_2020 = X1976_2020_president[which(X1976_2020_president$year == 2020),]
+democratic_support = data_2020[which(data_2020$party_detailed == 'DEMOCRAT'),]
+democratic_support$percentage =100 *  democratic_support$candidatevotes/democratic_support$totalvotes
+democratic_data = as.data.frame(cbind(democratic_support$state_po, democratic_support$percentage))
+colnames(democratic_data) = c('State','Percentage')
+democratic_data = democratic_data[order(democratic_data$State),]
+democratic_support = democratic_data$Percentage
+
 # results = svd(PCA_data)
 # plot(abs(results$v[,1]))
 # plot(abs(results$v[,2]))
@@ -54,87 +66,129 @@ PCA_data = scale(data_prepared, center = TRUE, scale = FALSE)
 # print(var_explained[1])
 ```
 
-## Including Plots
+## Exploration of the Data
 
-You can also embed plots, for example:
+First, we plot the cumulative per capita deaths to see the evolution of the pandemic in Figure 1. We see that the start of the pandemic is very similar, with almost all states being tightly together until the first 20 days when they start to diverge. The highest curves are Michigan, New York and New Jersey.
+
+```{r, echo = FALSE}
+  
+# Set up the color palette
+
+# Assign colors based on democratic support values
+xeval <- 1:61
+X = percapita
+mu <- colMeans(X)
+X <- sweep(X,2,mu)
+
+dataplot <- ggplot() +
+  # geom_line(data = data.frame(xeval = xeval, X = mu), aes(x = xeval, y = X ), color = 'black') +
+  # ylim(range(X)) +
+  labs(title = "Figure 1: Cumulative deaths by State per 100K inhabitants") + scale_color_gradient(low = "blue", high = "red") 
+for (n in 1:dim(X)[1]) {
+    dataplot <- dataplot + geom_line(data = data.frame(xeval = xeval, X = X[n,] + mu), aes(x = xeval, y = X + mu), color = democratic_support[n], alpha = 1)
+}
+dataplot + xlab('Days') + ylab('Deaths per 100K inhabitants')
+```
+
+Now, we look at the plots of the Principal Components. In Figure 2, we see that the first principal component is in line with our observation that the beginning of the pandemic is very similar for all the states. We see that that the First principal component discounts the first 20-25 days and emphasizes the later month on the first wave. We also remark that this component explains 82% of the variance in the data.
+
+Similarly in Figure 3, we see that the Principal component contrasts the end of the first wave with the beginning. We see that the Principal component discounts the data between 15-45 days of the pandemic and looks as the difference in the initial and final fortnights. 
+
+## Results of PCA
 
 ```{r pressure, echo=FALSE}
 xeval <- 1:61
-perform_pca <- function(X){
-  mu <- colMeans(X)
-  X <- sweep(X,2,mu)
+X = PCA_data
+mu <- colMeans(X)
+X <- sweep(X,2,mu)
   
-  SVD <- svd(X)
-  Scores <- SVD$u %*% diag(SVD$d)
-  Loadings <- SVD$v
+SVD <- svd(X)
+Scores <- SVD$u %*% diag(SVD$d)
+Loadings <- SVD$v
   # cat(cumsum(SVD$d^2/sum(SVD$d^2))[1:5]) # FVE
   FVE <- SVD$d^2/sum(SVD$d^2)
   # plot(SVD$d^2/sum(SVD$d^2), type="h")
   
   lam <- sqrt(length(xeval)) # measure change
   #op <- par(mfrow=c(3,2),mar=rep(2,4))
-  plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu), main=" Figure 1: Data and the mean")
-  for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
-  points(xeval,mu,col=2,lwd=2,type="l")
   
-# Set up the color palette
+  ###data and mean
+# dataplot <- ggplot() +
+#   geom_line(data = data.frame(xeval = xeval, X = mu), aes(x = xeval, y = X ), color = 'black') +
+#   ylim(range(X)) +
+#   labs(title = "Figure 1: Data and the mean")
+# 
+# for (n in 1:dim(X)[1]) {
+# 
+#     dataplot <- dataplot + geom_line(data = data.frame(xeval = xeval, X = X[n,] + mu), aes(x = xeval, y = X + mu), color = 'blue', alpha = 0.3)
+# }
+# print(dataplot)
+# 
+# 
+# 
+# 
+# # Plotting
+# #plot(Scores[1,]*sign(sum(Loadings[,1])), Scores[2,]*sign(sum(Loadings[,2])), main="Figure 2: 1st vs 2nd PC scores", xlim = c(-1,1), col = colors)
 
-# Assign colors based on democratic support values
-democratic_support <- c(40, 35, 42, 48, 62, 52, 48, 90, 70, 50, 47, 60, 44, 38, 55, 42, 40, 38, 46, 55, 50, 45, 48, 51, 42, 43, 39, 45, 57, 65, 54, 49, 60, 58, 45, 52, 55, 58, 42, 46, 65, 52, 49, 56, 53, 44, 57, 61, 55, 52, 59, 48, 44, 51, 43)
+# ggplot()+
+#   geom_point(aes(Scores[1,]*sign(sum(Loadings[,1])), Scores[2,]*sign(sum(Loadings[,2])), colour = as.numeric(democratic_support)) ) + scale_color_gradient(low = "blue", high = "red")
+#   
 
-# Plotting
-#plot(Scores[1,]*sign(sum(Loadings[,1])), Scores[2,]*sign(sum(Loadings[,2])), main="Figure 2: 1st vs 2nd PC scores", xlim = c(-1,1), col = colors)
+plot1 = ggplot(data = data.frame(xeval = xeval, loadings = Loadings[, 1] * sign(sum(Loadings[, 1])))) +
+  geom_line(aes(x = xeval, y = loadings)) +
+  labs(title = paste0("Figure 2: 1st PC (", round(100 * FVE[1]), "% of FVE)"))+ xlab('Days')
 
-ggplot()+
-  geom_point(aes(Scores[1,]*sign(sum(Loadings[,1])), Scores[2,]*sign(sum(Loadings[,2])),alpha  = democratic_support),  colour = 'Green')
-  
-  plot(xeval,Loadings[,1]*sign(sum(Loadings[,1])),type="l", main=paste0("1st PC (",round(100*FVE[1])," % of var)"))
   # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
   # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
   # points(xeval,mu,col=2,lwd=2,type="l")
   # points(xeval,mu+3*SVD$d[1]/lam*SVD$v[,1],col=2,lwd=2,type="l",lty=2)
   # points(xeval,mu-3*SVD$d[1]/lam*SVD$v[,1],col=2,lwd=2,type="l",lty=2)
   
-  plot(xeval,Loadings[,2]*sign(sum(Loadings[,2])),type="l", main=paste0("2nd PC (",round(100*FVE[2])," % of var)"))
+
+ plot2 = ggplot(data = data.frame(xeval = xeval, loadings = Loadings[, 2] * sign(sum(Loadings[, 2])))) +
+  geom_line(aes(x = xeval, y = loadings)) +
+  labs(title = paste0("Figure 3: 2nd PC (", round(100 * FVE[2]), "% of FVE)"))+xlab('Days')
   # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
   # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
   # points(xeval,mu,col=2,lwd=2,type="l")
   # points(xeval,mu+10*SVD$d[2]/lam*SVD$v[,2],col=2,lwd=2,type="l",lty=2)
   # points(xeval,mu-10*SVD$d[2]/lam*SVD$v[,2],col=2,lwd=2,type="l",lty=2)
   
-  plot(xeval,Loadings[,3]*sign(sum(Loadings[,3])),type="l", main=paste0("3rd PC (",round(100*FVE[3])," % of var)"))
+  # plot(xeval,Loadings[,3]*sign(sum(Loadings[,3])),type="l", main=paste0("3rd PC (",round(100*FVE[3])," % of var)"))
   # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
   # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
   # points(xeval,mu,col=2,lwd=2,type="l")
   # points(xeval,mu+30*SVD$d[3]/lam*SVD$v[,3],col=2,lwd=2,type="l",lty=2)
   # points(xeval,mu-30*SVD$d[3]/lam*SVD$v[,3],col=2,lwd=2,type="l",lty=2)
-  
-  plot(xeval,Loadings[,4]*sign(sum(Loadings[,4])),type="l", main=paste0("4th PC (",round(100*FVE[4])," % of var)"))
-  # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
-  # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
-  # points(xeval,mu,col=2,lwd=2,type="l")
-  # points(xeval,mu+30*SVD$d[4]/lam*SVD$v[,4],col=2,lwd=2,type="l",lty=2)
-  # points(xeval,mu-30*SVD$d[4]/lam*SVD$v[,4],col=2,lwd=2,type="l",lty=2)
-  return(SVD)
-}
-SVD = perform_pca(PCA_data) # t() so that individuals are rows
+#   
+#   plot(xeval,Loadings[,4]*sign(sum(Loadings[,4])),type="l", main=paste0("4th PC (",round(100*FVE[4])," % of var)"))
+#   # plot(xeval, X[1,]+mu,type="l", ylim=range(X+mu))
+#   # for(n in 1:dim(X)[1]) points(xeval, X[n,]+mu,type="l")
+#   # points(xeval,mu,col=2,lwd=2,type="l")
+#   # points(xeval,mu+30*SVD$d[4]/lam*SVD$v[,4],col=2,lwd=2,type="l",lty=2)
+#   # points(xeval,mu-30*SVD$d[4]/lam*SVD$v[,4],col=2,lwd=2,type="l",lty=2)
+#   return(SVD)
+# }
+# SVD = perform_pca(PCA_data) # t() so that individuals are rows
 # perform_pca(t(mal_height))
 
-
+plot1 | plot2
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R co
+Lastly, we remark that the first two principal components explain 97% of the variability in the data and we choose to ignore the other components. The plot of PC1 vs PC2 was very tighty clustered and we choose to not look at it because it was uninformative.
 
-
-
-
-```{r}
+```{r, include = FALSE}
 library(readr)
 X1976_2020_president <- read_csv("1976-2020-president.csv")
 data_2020 = X1976_2020_president[which(X1976_2020_president$year == 2020),]
 democratic_support = data_2020[which(data_2020$party_detailed == 'DEMOCRAT'),]
-democratic_support$percentage = democratic_support$candidatevotes/democratic_support$totalvotes
-democratic_data = cbind()
-
+democratic_support$percentage =100 *  democratic_support$candidatevotes/democratic_support$totalvotes
+democratic_data = as.data.frame(cbind(democratic_support$state_po, democratic_support$percentage))
+colnames(democratic_data) = c('State','Percentage')
+democratic_data = democratic_data[order(democratic_data$State),]
+democratic_support = democratic_data$Percentage
 ```
 
+## Conclusion
+
+We see that the variability in the first wave of the COVID-19 pandemic is explained adequately by the first and second principal components. In our opinion, this is because of the different environments and measures taken in each state. Three is very less variability in the first few weeks wherein the transmission has not increased to high levels. In the last month of the first wave, we see a lot of variability in the evolution of the pandemic.
